@@ -35,7 +35,7 @@ public class Student {
   @JoinColumn(name = "user_account_id", nullable = false, unique = true)
   private UserAccount userAccount;
 
-  // Unique, just stored for now 
+  // Unique, just stored for now
   @Column(name = "student_number", nullable = false, unique = true)
   private String studentNumber;
 

@@ -22,7 +22,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "grade", uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "exam_id"}))
+@Table(
+    name = "grade",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "exam_id"}))
 @Getter
 @Setter
 @NoArgsConstructor

@@ -22,8 +22,7 @@ import lombok.Setter;
 @Table(
     name = "group_course",
     uniqueConstraints =
-        @UniqueConstraint(
-            columnNames = {"group_id", "course_id", "academic_year_id", "semester"}))
+        @UniqueConstraint(columnNames = {"group_id", "course_id", "academic_year_id", "semester"}))
 @Getter
 @Setter
 @NoArgsConstructor
