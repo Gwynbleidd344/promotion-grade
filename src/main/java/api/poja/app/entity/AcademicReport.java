@@ -1,5 +1,6 @@
 package api.poja.app.entity;
 
+import api.poja.app.entity.enums.ReportStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -12,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -53,4 +55,10 @@ public class AcademicReport {
 
   @Column(name = "sent_at")
   private LocalDateTime sentAt;
+
+  @Column(name = "general_average", precision = 5, scale = 2)
+  private BigDecimal generalAverage;
+
+  @Column(name = "total_credits_obtained")
+  private Integer totalCreditsObtained;
 }

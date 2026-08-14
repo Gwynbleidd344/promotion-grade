@@ -43,8 +43,8 @@ public class GradeHistory {
   private LocalDateTime changedAt;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "changed_by_teacher_id")
-  private Teacher changedBy;
+  @JoinColumn(name = "changed_by_user_account_id")
+  private UserAccount changedBy;
 
   private String reason;
 }
