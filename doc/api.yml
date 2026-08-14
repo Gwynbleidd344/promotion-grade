@@ -9,7 +9,7 @@ info:
     and graduation lists.
   version: 1.0.0
 servers:
-  - url: /api/v1
+  - url: http://localhost:8080/api/v1
 
 tags:
   - name: Auth
