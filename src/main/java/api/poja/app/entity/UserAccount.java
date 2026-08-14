@@ -12,12 +12,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Entity
 @Table(name = "user_account")
@@ -25,7 +29,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserAccount {
+public class UserAccount implements UserDetails {
 
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
@@ -41,7 +45,7 @@ public class UserAccount {
   private String passwordHash;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
+  @Column(nullable = true)
   private UserRole role;
 
   @Column(nullable = false)
@@ -49,4 +53,42 @@ public class UserAccount {
 
   @OneToMany(mappedBy = "changedBy", fetch = FetchType.LAZY)
   private List<GradeHistory> gradeChangesMade = new ArrayList<>();
+
+  @Override
+  public Collection<? extends GrantedAuthority> getAuthorities() {
+    if (role == null) {
+      return List.of();
+    }
+    return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+  }
+
+  @Override
+  public String getPassword() {
+    return passwordHash;
+  }
+
+  @Override
+  public String getUsername() {
+    return username;
+  }
+
+  @Override
+  public boolean isAccountNonExpired() {
+    return true;
+  }
+
+  @Override
+  public boolean isAccountNonLocked() {
+    return true;
+  }
+
+  @Override
+  public boolean isCredentialsNonExpired() {
+    return true;
+  }
+
+  @Override
+  public boolean isEnabled() {
+    return enabled;
+  }
 }
