@@ -7,13 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface StudentGroupHistoryRepository
-    extends JpaRepository<StudentGroupHistory, UUID> {
+public interface StudentGroupHistoryRepository extends JpaRepository<StudentGroupHistory, UUID> {
 
   List<StudentGroupHistory> findByStudentIdOrderByStartDateAsc(UUID studentId);
 
-  List<StudentGroupHistory> findByStudentIdAndAcademicYearId(
-      UUID studentId, UUID academicYearId);
+  List<StudentGroupHistory> findByStudentIdAndAcademicYearId(UUID studentId, UUID academicYearId);
 
   List<StudentGroupHistory> findByGroupIdAndAcademicYearId(UUID groupId, UUID academicYearId);
 }

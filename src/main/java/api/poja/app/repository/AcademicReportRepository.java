@@ -12,6 +12,5 @@ public interface AcademicReportRepository extends JpaRepository<AcademicReport, 
 
   List<AcademicReport> findByStudentId(UUID studentId);
 
-  Optional<AcademicReport> findByStudentIdAndAcademicYearId(
-      UUID studentId, UUID academicYearId);
+  Optional<AcademicReport> findByStudentIdAndAcademicYearId(UUID studentId, UUID academicYearId);
 }
