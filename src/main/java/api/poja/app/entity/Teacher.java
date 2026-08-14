@@ -34,7 +34,6 @@ public class Teacher {
   @JoinColumn(name = "user_account_id", nullable = false, unique = true)
   private UserAccount userAccount;
 
-  // Unique, just stored for now
   @Column(name = "employee_number", nullable = false, unique = true)
   private String employeeNumber;
 
@@ -46,7 +45,4 @@ public class Teacher {
 
   @OneToMany(mappedBy = "teacher", fetch = FetchType.LAZY)
   private List<CourseTeacher> courseAssignments = new ArrayList<>();
-
-  @OneToMany(mappedBy = "changedBy", fetch = FetchType.LAZY)
-  private List<GradeHistory> gradeChangesMade = new ArrayList<>();
 }
