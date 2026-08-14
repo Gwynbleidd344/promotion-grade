@@ -1,4 +1,4 @@
-package api.poja.app.endpoint.rest.controller.auth;
+package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.LoginRequest;
 import api.poja.app.endpoint.rest.dto.LoginResponse;
@@ -6,7 +6,7 @@ import api.poja.app.endpoint.rest.dto.RegisterRequest;
 import api.poja.app.endpoint.rest.dto.UserAccountResponse;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.repository.UserAccountRepository;
-import api.poja.app.security.JwtService;
+import api.poja.app.service.JwtService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;

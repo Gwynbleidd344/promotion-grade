@@ -1,5 +1,6 @@
-package api.poja.app.endpoint.rest.controller.auth;
+package api.poja.app.exceptions;
 
+import api.poja.app.endpoint.rest.controller.AuthController;
 import api.poja.app.endpoint.rest.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

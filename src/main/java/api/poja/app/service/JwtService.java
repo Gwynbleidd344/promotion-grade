@@ -1,4 +1,4 @@
-package api.poja.app.security;
+package api.poja.app.service;
 
 import api.poja.app.entity.UserAccount;
 import io.jsonwebtoken.Claims;
