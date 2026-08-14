@@ -1,5 +1,6 @@
 package api.poja.app.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -8,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -16,7 +18,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "graduation_list_entry")
+@Table(
+    name = "graduation_list_entry",
+    uniqueConstraints =
+        @UniqueConstraint(columnNames = {"graduation_list_id", "student_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,8 +40,9 @@ public class GraduationListEntry {
   @JoinColumn(name = "student_id", nullable = false)
   private Student student;
 
+  @Column(nullable = false)
   private Integer rank;
 
-  @jakarta.persistence.Column(name = "general_average", precision = 5, scale = 2)
+  @Column(name = "general_average", nullable = false, precision = 5, scale = 2)
   private BigDecimal generalAverage;
 }
