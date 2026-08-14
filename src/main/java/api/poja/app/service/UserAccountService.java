@@ -50,8 +50,7 @@ public class UserAccountService {
     switch (request.role()) {
       case STD -> assignStudentProfileIfMissing(userAccount, request.studentProfile());
       case TEC -> assignTeacherProfileIfMissing(userAccount, request.teacherProfile());
-      case ADM -> {
-      }
+      case ADM -> {}
     }
 
     userAccount.setRole(request.role());
@@ -91,8 +90,7 @@ public class UserAccountService {
             .orElseThrow(
                 () ->
                     new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Unknown promotion: " + profile.promotionId()));
+                        HttpStatus.BAD_REQUEST, "Unknown promotion: " + profile.promotionId()));
 
     var student = new Student();
     student.setUserAccount(userAccount);
