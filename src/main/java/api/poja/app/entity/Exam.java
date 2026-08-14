@@ -46,7 +46,7 @@ public class Exam {
   @Column(name = "exam_time")
   private LocalTime examTime;
 
-  @Column(nullable = false, precision = 4, scale = 3)
+  @Column(nullable = false, precision = 5, scale = 4)
   private BigDecimal coefficient;
 
   @OneToMany(mappedBy = "exam", fetch = FetchType.LAZY)
