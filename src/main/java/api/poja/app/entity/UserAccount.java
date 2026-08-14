@@ -1,5 +1,6 @@
 package api.poja.app.entity;
 
+import api.poja.app.entity.enums.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
