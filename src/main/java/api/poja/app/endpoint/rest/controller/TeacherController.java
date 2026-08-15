@@ -1,7 +1,7 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.TeacherCreateRequest;
-import api.poja.app.endpoint.rest.dto.TeacherResponse;
+import api.poja.app.model.Teacher;
 import api.poja.app.service.TeacherService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -23,15 +23,14 @@ public class TeacherController {
   private final TeacherService teacherService;
 
   @GetMapping
-  public ResponseEntity<List<TeacherResponse>> listTeachers(
+  public ResponseEntity<List<Teacher>> listTeachers(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     return ResponseEntity.ok(teacherService.list(page, size));
   }
 
   @PostMapping
-  public ResponseEntity<TeacherResponse> createTeacher(
-      @Valid @RequestBody TeacherCreateRequest request) {
+  public ResponseEntity<Teacher> createTeacher(@Valid @RequestBody TeacherCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(teacherService.create(request));
   }
 }

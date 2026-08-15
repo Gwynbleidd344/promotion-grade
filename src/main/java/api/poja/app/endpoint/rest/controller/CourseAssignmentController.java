@@ -1,8 +1,8 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.CourseAssignmentCreateRequest;
-import api.poja.app.endpoint.rest.dto.CourseAssignmentResponse;
-import api.poja.app.endpoint.rest.dto.CourseTeacherResponse;
+import api.poja.app.model.CourseAssignment;
+import api.poja.app.model.CourseTeacher;
 import api.poja.app.service.CourseAssignmentService;
 import api.poja.app.service.CourseTeacherService;
 import jakarta.validation.Valid;
@@ -29,7 +29,7 @@ public class CourseAssignmentController {
   private final CourseTeacherService courseTeacherService;
 
   @GetMapping
-  public ResponseEntity<List<CourseAssignmentResponse>> listCourseAssignments(
+  public ResponseEntity<List<CourseAssignment>> listCourseAssignments(
       @RequestParam(required = false) UUID groupId,
       @RequestParam(required = false) UUID courseId,
       @RequestParam(required = false) UUID academicYearId,
@@ -40,14 +40,14 @@ public class CourseAssignmentController {
 
   @PreAuthorize("hasRole('ADM')")
   @PostMapping
-  public ResponseEntity<CourseAssignmentResponse> createCourseAssignment(
+  public ResponseEntity<CourseAssignment> createCourseAssignment(
       @Valid @RequestBody CourseAssignmentCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
   }
 
   @PreAuthorize("hasRole('ADM')")
   @PostMapping("/{id}/teachers/{teacherId}")
-  public ResponseEntity<CourseTeacherResponse> assignTeacher(
+  public ResponseEntity<CourseTeacher> assignTeacher(
       @PathVariable UUID id, @PathVariable UUID teacherId) {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(courseTeacherService.assignTeacher(id, teacherId));

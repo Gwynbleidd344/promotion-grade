@@ -1,7 +1,7 @@
 package api.poja.app.service;
 
-import api.poja.app.endpoint.rest.dto.CourseTeacherResponse;
-import api.poja.app.entity.CourseTeacher;
+import api.poja.app.mapper.CourseTeacherMapper;
+import api.poja.app.model.CourseTeacher;
 import api.poja.app.repository.CourseTeacherRepository;
 import api.poja.app.repository.GroupCourseRepository;
 import api.poja.app.repository.TeacherRepository;
@@ -21,7 +21,7 @@ public class CourseTeacherService {
   private final TeacherRepository teacherRepository;
 
   @Transactional
-  public CourseTeacherResponse assignTeacher(UUID courseAssignmentId, UUID teacherId) {
+  public CourseTeacher assignTeacher(UUID courseAssignmentId, UUID teacherId) {
     var groupCourse =
         groupCourseRepository
             .findById(courseAssignmentId)
@@ -40,10 +40,7 @@ public class CourseTeacherService {
           HttpStatus.CONFLICT, "The teacher is already assigned to this course");
     }
 
-    var courseTeacher = new CourseTeacher();
-    courseTeacher.setTeacher(teacher);
-    courseTeacher.setGroupCourse(groupCourse);
-
-    return CourseTeacherResponse.from(courseTeacherRepository.save(courseTeacher));
+    var entity = CourseTeacherMapper.toNewEntity(teacher, groupCourse);
+    return CourseTeacherMapper.toModel(courseTeacherRepository.save(entity));
   }
 }

@@ -1,7 +1,7 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.PromotionCreateRequest;
-import api.poja.app.endpoint.rest.dto.PromotionResponse;
+import api.poja.app.model.Promotion;
 import api.poja.app.service.PromotionService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,7 +24,7 @@ public class PromotionController {
   private final PromotionService promotionService;
 
   @GetMapping
-  public ResponseEntity<List<PromotionResponse>> listPromotions(
+  public ResponseEntity<List<Promotion>> listPromotions(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     return ResponseEntity.ok(promotionService.list(page, size));
@@ -32,7 +32,7 @@ public class PromotionController {
 
   @PreAuthorize("hasRole('ADM')")
   @PostMapping
-  public ResponseEntity<PromotionResponse> createPromotion(
+  public ResponseEntity<Promotion> createPromotion(
       @Valid @RequestBody PromotionCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(promotionService.create(request));
   }

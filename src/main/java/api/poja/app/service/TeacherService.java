@@ -1,10 +1,10 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.TeacherCreateRequest;
-import api.poja.app.endpoint.rest.dto.TeacherResponse;
-import api.poja.app.entity.Teacher;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.UserRole;
+import api.poja.app.mapper.TeacherMapper;
+import api.poja.app.model.Teacher;
 import api.poja.app.repository.TeacherRepository;
 import api.poja.app.repository.UserAccountRepository;
 import java.util.List;
@@ -27,15 +27,15 @@ public class TeacherService {
   private final PasswordEncoder passwordEncoder;
   private final SequentialCodeGenerator sequentialCodeGenerator;
 
-  public List<TeacherResponse> list(int page, int size) {
+  public List<Teacher> list(int page, int size) {
     return teacherRepository
         .findAll(PageRequest.of(page, size))
-        .map(TeacherResponse::from)
+        .map(TeacherMapper::toModel)
         .getContent();
   }
 
   @Transactional
-  public TeacherResponse create(TeacherCreateRequest request) {
+  public Teacher create(TeacherCreateRequest request) {
     if (userAccountRepository.findByUsername(request.username()).isPresent()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken");
     }
@@ -51,13 +51,13 @@ public class TeacherService {
     userAccount.setEnabled(true);
     userAccount = userAccountRepository.save(userAccount);
 
-    var teacher = new Teacher();
-    teacher.setUserAccount(userAccount);
-    teacher.setEmployeeNumber(nextEmployeeNumber());
-    teacher.setFirstName(request.firstName());
-    teacher.setLastName(request.lastName());
+    var toCreate =
+        Teacher.builder().firstName(request.firstName()).lastName(request.lastName()).build();
 
-    return TeacherResponse.from(teacherRepository.save(teacher));
+    var entity = TeacherMapper.toNewEntity(toCreate, userAccount);
+    entity.setEmployeeNumber(nextEmployeeNumber());
+
+    return TeacherMapper.toModel(teacherRepository.save(entity));
   }
 
   private String nextEmployeeNumber() {
