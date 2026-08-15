@@ -3,6 +3,7 @@ package api.poja.app.security;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -42,6 +43,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/v1/users/**")
                     .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/teachers/**")
+                    .hasRole("ADM")
+                    .requestMatchers("/api/v1/teachers/**")
+                    .authenticated()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
