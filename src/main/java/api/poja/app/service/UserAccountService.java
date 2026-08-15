@@ -41,9 +41,9 @@ public class UserAccountService {
   public List<UserAccountResponse> list(UserRole role, int page, int size) {
     var pageable = PageRequest.of(page, size);
     var result =
-            role == null
-                    ? userAccountRepository.findAll(pageable)
-                    : userAccountRepository.findByRole(role, pageable);
+        role == null
+            ? userAccountRepository.findAll(pageable)
+            : userAccountRepository.findByRole(role, pageable);
     return result.map(UserAccountResponse::from).getContent();
   }
 
@@ -66,35 +66,35 @@ public class UserAccountService {
   }
 
   private void assignStudentProfileIfMissing(
-          UserAccount userAccount, RoleChangeRequest.StudentProfile profile) {
+      UserAccount userAccount, RoleChangeRequest.StudentProfile profile) {
     if (studentRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
       return;
     }
     if (profile == null
-            || isBlank(profile.firstName())
-            || isBlank(profile.lastName())
-            || profile.program() == null
-            || profile.promotionId() == null) {
+        || isBlank(profile.firstName())
+        || isBlank(profile.lastName())
+        || profile.program() == null
+        || profile.promotionId() == null) {
       throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "studentProfile (firstName, lastName, program, promotionId) is "
-                      + "required for a first-time promotion to STD");
+          HttpStatus.BAD_REQUEST,
+          "studentProfile (firstName, lastName, program, promotionId) is "
+              + "required for a first-time promotion to STD");
     }
 
     var program =
-            programRepository
-                    .findByCode(profile.program())
-                    .orElseThrow(
-                            () ->
-                                    new ResponseStatusException(
-                                            HttpStatus.BAD_REQUEST, "Unknown program: " + profile.program()));
+        programRepository
+            .findByCode(profile.program())
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Unknown program: " + profile.program()));
     var promotion =
-            promotionRepository
-                    .findById(profile.promotionId())
-                    .orElseThrow(
-                            () ->
-                                    new ResponseStatusException(
-                                            HttpStatus.BAD_REQUEST, "Unknown promotion: " + profile.promotionId()));
+        promotionRepository
+            .findById(profile.promotionId())
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Unknown promotion: " + profile.promotionId()));
 
     var student = new Student();
     student.setUserAccount(userAccount);
@@ -107,14 +107,14 @@ public class UserAccountService {
   }
 
   private void assignTeacherProfileIfMissing(
-          UserAccount userAccount, RoleChangeRequest.TeacherProfile profile) {
+      UserAccount userAccount, RoleChangeRequest.TeacherProfile profile) {
     if (teacherRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
       return;
     }
     if (profile == null || isBlank(profile.firstName()) || isBlank(profile.lastName())) {
       throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "teacherProfile (firstName, lastName) is required for a first-time promotion to TEC");
+          HttpStatus.BAD_REQUEST,
+          "teacherProfile (firstName, lastName) is required for a first-time promotion to TEC");
     }
 
     var teacher = new Teacher();
@@ -126,14 +126,14 @@ public class UserAccountService {
   }
 
   private void assignAdminProfileIfMissing(
-          UserAccount userAccount, RoleChangeRequest.AdminProfile profile) {
+      UserAccount userAccount, RoleChangeRequest.AdminProfile profile) {
     if (adminRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
       return;
     }
     if (profile == null || isBlank(profile.firstName()) || isBlank(profile.lastName())) {
       throw new ResponseStatusException(
-              HttpStatus.BAD_REQUEST,
-              "adminProfile (firstName, lastName) is required for a first-time promotion to ADM");
+          HttpStatus.BAD_REQUEST,
+          "adminProfile (firstName, lastName) is required for a first-time promotion to ADM");
     }
 
     var admin = new Admin();
@@ -146,30 +146,30 @@ public class UserAccountService {
 
   private String nextStudentNumber() {
     return sequentialCodeGenerator.generate(
-            STUDENT_NUMBER_PREFIX,
-            studentRepository.count(),
-            candidate -> studentRepository.findByStudentNumber(candidate).isPresent());
+        STUDENT_NUMBER_PREFIX,
+        studentRepository.count(),
+        candidate -> studentRepository.findByStudentNumber(candidate).isPresent());
   }
 
   private String nextEmployeeNumber() {
     return sequentialCodeGenerator.generate(
-            EMPLOYEE_NUMBER_PREFIX,
-            teacherRepository.count(),
-            candidate -> teacherRepository.findByEmployeeNumber(candidate).isPresent());
+        EMPLOYEE_NUMBER_PREFIX,
+        teacherRepository.count(),
+        candidate -> teacherRepository.findByEmployeeNumber(candidate).isPresent());
   }
 
   private String nextAdminNumber() {
     return sequentialCodeGenerator.generate(
-            ADMIN_NUMBER_PREFIX,
-            adminRepository.count(),
-            candidate -> adminRepository.findByAdminNumber(candidate).isPresent());
+        ADMIN_NUMBER_PREFIX,
+        adminRepository.count(),
+        candidate -> adminRepository.findByAdminNumber(candidate).isPresent());
   }
 
   private UserAccount findUserAccountOrThrow(UUID id) {
     return userAccountRepository
-            .findById(id)
-            .orElseThrow(
-                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User account not found"));
+        .findById(id)
+        .orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User account not found"));
   }
 
   private static boolean isBlank(String s) {

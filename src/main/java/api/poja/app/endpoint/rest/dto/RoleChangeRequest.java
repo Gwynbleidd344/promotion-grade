@@ -6,13 +6,13 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record RoleChangeRequest(
-        @NotNull UserRole role,
-        StudentProfile studentProfile,
-        TeacherProfile teacherProfile,
-        AdminProfile adminProfile) {
+    @NotNull UserRole role,
+    StudentProfile studentProfile,
+    TeacherProfile teacherProfile,
+    AdminProfile adminProfile) {
 
   public record StudentProfile(
-          String firstName, String lastName, ProgramCode program, UUID promotionId) {}
+      String firstName, String lastName, ProgramCode program, UUID promotionId) {}
 
   public record TeacherProfile(String firstName, String lastName) {}
 
