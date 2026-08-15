@@ -1179,19 +1179,13 @@ components:
 
     TeacherCreateRequest:
       type: object
-      required: [employeeNumber, firstName, lastName, username, email]
+      required: [ username, email, password, firstName, lastName ]
       properties:
-        employeeNumber:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        username:
-          type: string
-        email:
-          type: string
-          format: email
+        username: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 8 }
+        firstName: { type: string }
+        lastName: { type: string }
 
     Course:
       type: object
