@@ -6,8 +6,8 @@ import api.poja.app.entity.GroupCourse;
 import api.poja.app.repository.AcademicYearRepository;
 import api.poja.app.repository.CourseRepository;
 import api.poja.app.repository.GroupCourseRepository;
-import api.poja.app.repository.model.GroupCourseSpecifications;
 import api.poja.app.repository.StudentGroupRepository;
+import api.poja.app.repository.model.GroupCourseSpecifications;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -29,7 +29,9 @@ public class CourseAssignmentService {
   public List<CourseAssignmentResponse> list(
       UUID groupId, UUID courseId, UUID academicYearId, Integer semester) {
     var spec = GroupCourseSpecifications.matching(groupId, courseId, academicYearId, semester);
-    return groupCourseRepository.findAll(spec).stream().map(CourseAssignmentResponse::from).toList();
+    return groupCourseRepository.findAll(spec).stream()
+        .map(CourseAssignmentResponse::from)
+        .toList();
   }
 
   @Transactional
@@ -48,8 +50,7 @@ public class CourseAssignmentService {
         academicYearRepository
             .findById(request.academicYearId())
             .orElseThrow(
-                () ->
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Academic year not found"));
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Academic year not found"));
 
     var alreadyExists =
         groupCourseRepository
@@ -58,8 +59,7 @@ public class CourseAssignmentService {
             .isPresent();
     if (alreadyExists) {
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT,
-          "This group/course/year/semester combination already exists");
+          HttpStatus.CONFLICT, "This group/course/year/semester combination already exists");
     }
 
     var groupCourse = new GroupCourse();

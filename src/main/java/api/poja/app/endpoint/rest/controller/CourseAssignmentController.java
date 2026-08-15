@@ -42,8 +42,7 @@ public class CourseAssignmentController {
   @PostMapping
   public ResponseEntity<CourseAssignmentResponse> createCourseAssignment(
       @Valid @RequestBody CourseAssignmentCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(courseAssignmentService.create(request));
+    return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
   }
 
   @PreAuthorize("hasRole('ADM')")

@@ -19,8 +19,7 @@ public final class GroupCourseSpecifications {
         predicate = cb.and(predicate, cb.equal(root.get("course").get("id"), courseId));
       }
       if (academicYearId != null) {
-        predicate =
-            cb.and(predicate, cb.equal(root.get("academicYear").get("id"), academicYearId));
+        predicate = cb.and(predicate, cb.equal(root.get("academicYear").get("id"), academicYearId));
       }
       if (semester != null) {
         predicate = cb.and(predicate, cb.equal(root.get("semester"), semester));
