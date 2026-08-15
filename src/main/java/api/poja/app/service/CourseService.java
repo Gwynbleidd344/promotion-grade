@@ -18,14 +18,17 @@ public class CourseService {
   private final CourseRepository courseRepository;
 
   public List<CourseResponse> list(int page, int size) {
-    return courseRepository.findAll(PageRequest.of(page, size)).map(CourseResponse::from)
+    return courseRepository
+        .findAll(PageRequest.of(page, size))
+        .map(CourseResponse::from)
         .getContent();
   }
 
   public CourseResponse create(CourseCreateRequest request) {
     if (courseRepository.findByReference(request.reference()).isPresent()) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "A course with reference '" + request.reference() + "' already exists");
+          HttpStatus.BAD_REQUEST,
+          "A course with reference '" + request.reference() + "' already exists");
     }
 
     var course = new Course();
