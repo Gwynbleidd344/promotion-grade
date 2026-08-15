@@ -1,8 +1,8 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.CourseCreateRequest;
-import api.poja.app.endpoint.rest.dto.CourseResponse;
-import api.poja.app.entity.Course;
+import api.poja.app.mapper.CourseMapper;
+import api.poja.app.model.Course;
 import api.poja.app.repository.CourseRepository;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -17,25 +17,28 @@ public class CourseService {
 
   private final CourseRepository courseRepository;
 
-  public List<CourseResponse> list(int page, int size) {
+  public List<Course> list(int page, int size) {
     return courseRepository
         .findAll(PageRequest.of(page, size))
-        .map(CourseResponse::from)
+        .map(CourseMapper::toModel)
         .getContent();
   }
 
-  public CourseResponse create(CourseCreateRequest request) {
+  public Course create(CourseCreateRequest request) {
     if (courseRepository.findByReference(request.reference()).isPresent()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "A course with reference '" + request.reference() + "' already exists");
     }
 
-    var course = new Course();
-    course.setReference(request.reference());
-    course.setTitle(request.title());
-    course.setCredits(request.credits());
+    var toCreate =
+        Course.builder()
+            .reference(request.reference())
+            .title(request.title())
+            .credits(request.credits())
+            .build();
 
-    return CourseResponse.from(courseRepository.save(course));
+    var saved = courseRepository.save(CourseMapper.toNewEntity(toCreate));
+    return CourseMapper.toModel(saved);
   }
 }

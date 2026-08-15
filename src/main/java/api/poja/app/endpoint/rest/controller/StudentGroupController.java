@@ -1,7 +1,7 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.StudentGroupCreateRequest;
-import api.poja.app.endpoint.rest.dto.StudentGroupResponse;
+import api.poja.app.model.StudentGroup;
 import api.poja.app.service.StudentGroupService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,7 +24,7 @@ public class StudentGroupController {
   private final StudentGroupService studentGroupService;
 
   @GetMapping
-  public ResponseEntity<List<StudentGroupResponse>> listGroups(
+  public ResponseEntity<List<StudentGroup>> listGroups(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     return ResponseEntity.ok(studentGroupService.list(page, size));
@@ -32,7 +32,7 @@ public class StudentGroupController {
 
   @PreAuthorize("hasRole('ADM')")
   @PostMapping
-  public ResponseEntity<StudentGroupResponse> createGroup(
+  public ResponseEntity<StudentGroup> createGroup(
       @Valid @RequestBody StudentGroupCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(studentGroupService.create(request));
   }

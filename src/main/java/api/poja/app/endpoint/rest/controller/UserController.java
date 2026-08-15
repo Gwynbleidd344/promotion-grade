@@ -1,8 +1,8 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.RoleChangeRequest;
-import api.poja.app.endpoint.rest.dto.UserAccountResponse;
 import api.poja.app.entity.enums.UserRole;
+import api.poja.app.model.UserAccount;
 import api.poja.app.service.UserAccountService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -25,7 +25,7 @@ public class UserController {
   private final UserAccountService userAccountService;
 
   @GetMapping
-  public ResponseEntity<List<UserAccountResponse>> listUsers(
+  public ResponseEntity<List<UserAccount>> listUsers(
       @RequestParam(required = false) UserRole role,
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
@@ -33,12 +33,12 @@ public class UserController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<UserAccountResponse> getUser(@PathVariable UUID id) {
+  public ResponseEntity<UserAccount> getUser(@PathVariable UUID id) {
     return ResponseEntity.ok(userAccountService.getById(id));
   }
 
   @PatchMapping("/{id}/role")
-  public ResponseEntity<UserAccountResponse> changeRole(
+  public ResponseEntity<UserAccount> changeRole(
       @PathVariable UUID id, @Valid @RequestBody RoleChangeRequest request) {
     return ResponseEntity.ok(userAccountService.changeRole(id, request));
   }

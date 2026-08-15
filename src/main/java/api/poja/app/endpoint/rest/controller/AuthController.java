@@ -3,8 +3,8 @@ package api.poja.app.endpoint.rest.controller;
 import api.poja.app.endpoint.rest.dto.LoginRequest;
 import api.poja.app.endpoint.rest.dto.LoginResponse;
 import api.poja.app.endpoint.rest.dto.RegisterRequest;
-import api.poja.app.endpoint.rest.dto.UserAccountResponse;
 import api.poja.app.entity.UserAccount;
+import api.poja.app.mapper.UserAccountMapper;
 import api.poja.app.repository.UserAccountRepository;
 import api.poja.app.service.JwtService;
 import jakarta.validation.Valid;
@@ -31,7 +31,8 @@ public class AuthController {
   private final JwtService jwtService;
 
   @PostMapping("/register")
-  public ResponseEntity<UserAccountResponse> register(@Valid @RequestBody RegisterRequest request) {
+  public ResponseEntity<api.poja.app.model.UserAccount> register(
+      @Valid @RequestBody RegisterRequest request) {
     if (userAccountRepository.findByUsername(request.username()).isPresent()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken");
     }
@@ -47,7 +48,7 @@ public class AuthController {
     userAccount.setEnabled(true);
 
     var saved = userAccountRepository.save(userAccount);
-    return ResponseEntity.status(HttpStatus.CREATED).body(UserAccountResponse.from(saved));
+    return ResponseEntity.status(HttpStatus.CREATED).body(UserAccountMapper.toModel(saved));
   }
 
   @PostMapping("/login")

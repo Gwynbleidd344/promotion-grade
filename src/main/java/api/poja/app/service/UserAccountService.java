@@ -1,12 +1,12 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.RoleChangeRequest;
-import api.poja.app.endpoint.rest.dto.UserAccountResponse;
 import api.poja.app.entity.Admin;
 import api.poja.app.entity.Student;
 import api.poja.app.entity.Teacher;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.UserRole;
+import api.poja.app.mapper.UserAccountMapper;
 import api.poja.app.repository.AdminRepository;
 import api.poja.app.repository.ProgramRepository;
 import api.poja.app.repository.PromotionRepository;
@@ -38,21 +38,21 @@ public class UserAccountService {
   private final PromotionRepository promotionRepository;
   private final SequentialCodeGenerator sequentialCodeGenerator;
 
-  public List<UserAccountResponse> list(UserRole role, int page, int size) {
+  public List<api.poja.app.model.UserAccount> list(UserRole role, int page, int size) {
     var pageable = PageRequest.of(page, size);
     var result =
         role == null
             ? userAccountRepository.findAll(pageable)
             : userAccountRepository.findByRole(role, pageable);
-    return result.map(UserAccountResponse::from).getContent();
+    return result.map(UserAccountMapper::toModel).getContent();
   }
 
-  public UserAccountResponse getById(UUID id) {
-    return UserAccountResponse.from(findUserAccountOrThrow(id));
+  public api.poja.app.model.UserAccount getById(UUID id) {
+    return UserAccountMapper.toModel(findUserAccountOrThrow(id));
   }
 
   @Transactional
-  public UserAccountResponse changeRole(UUID id, RoleChangeRequest request) {
+  public api.poja.app.model.UserAccount changeRole(UUID id, RoleChangeRequest request) {
     var userAccount = findUserAccountOrThrow(id);
 
     switch (request.role()) {
@@ -62,8 +62,9 @@ public class UserAccountService {
     }
 
     userAccount.setRole(request.role());
-    return UserAccountResponse.from(userAccountRepository.save(userAccount));
+    return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
   }
+
 
   private void assignStudentProfileIfMissing(
       UserAccount userAccount, RoleChangeRequest.StudentProfile profile) {

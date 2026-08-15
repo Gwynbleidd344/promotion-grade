@@ -1,8 +1,8 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.PromotionCreateRequest;
-import api.poja.app.endpoint.rest.dto.PromotionResponse;
-import api.poja.app.entity.Promotion;
+import api.poja.app.mapper.PromotionMapper;
+import api.poja.app.model.Promotion;
 import api.poja.app.repository.PromotionRepository;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -16,24 +16,24 @@ public class PromotionService {
 
   private final PromotionRepository promotionRepository;
 
-  public List<PromotionResponse> list(int page, int size) {
+  public List<Promotion> list(int page, int size) {
     var all = promotionRepository.findAllByOrderByGraduationYearDesc();
     int from = Math.min(page * size, all.size());
     int to = Math.min(from + size, all.size());
-    return all.subList(from, to).stream().map(PromotionResponse::from).toList();
+    return all.subList(from, to).stream().map(PromotionMapper::toModel).toList();
   }
 
-  public PromotionResponse create(PromotionCreateRequest request) {
+  public Promotion create(PromotionCreateRequest request) {
     if (promotionRepository.findByGraduationYear(request.graduationYear()).isPresent()) {
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST,
           "A promotion for graduation year " + request.graduationYear() + " already exists");
     }
 
-    var promotion = new Promotion();
-    promotion.setName(request.name());
-    promotion.setGraduationYear(request.graduationYear());
+    var toCreate =
+        Promotion.builder().name(request.name()).graduationYear(request.graduationYear()).build();
 
-    return PromotionResponse.from(promotionRepository.save(promotion));
+    var saved = promotionRepository.save(PromotionMapper.toNewEntity(toCreate));
+    return PromotionMapper.toModel(saved);
   }
 }

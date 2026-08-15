@@ -1,8 +1,8 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.CourseAssignmentCreateRequest;
-import api.poja.app.endpoint.rest.dto.CourseAssignmentResponse;
-import api.poja.app.entity.GroupCourse;
+import api.poja.app.mapper.CourseAssignmentMapper;
+import api.poja.app.model.CourseAssignment;
 import api.poja.app.repository.AcademicYearRepository;
 import api.poja.app.repository.CourseRepository;
 import api.poja.app.repository.GroupCourseRepository;
@@ -26,16 +26,16 @@ public class CourseAssignmentService {
   private final AcademicYearRepository academicYearRepository;
 
   @Transactional(readOnly = true)
-  public List<CourseAssignmentResponse> list(
+  public List<CourseAssignment> list(
       UUID groupId, UUID courseId, UUID academicYearId, Integer semester) {
     var spec = GroupCourseSpecifications.matching(groupId, courseId, academicYearId, semester);
     return groupCourseRepository.findAll(spec).stream()
-        .map(CourseAssignmentResponse::from)
+        .map(CourseAssignmentMapper::toModel)
         .toList();
   }
 
   @Transactional
-  public CourseAssignmentResponse create(CourseAssignmentCreateRequest request) {
+  public CourseAssignment create(CourseAssignmentCreateRequest request) {
     var group =
         studentGroupRepository
             .findById(request.groupId())
@@ -50,24 +50,26 @@ public class CourseAssignmentService {
         academicYearRepository
             .findById(request.academicYearId())
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Academic year not found"));
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Academic year not found"));
 
     var alreadyExists =
         groupCourseRepository
             .findByGroupIdAndCourseIdAndAcademicYearIdAndSemester(
-                request.groupId(), request.courseId(), request.academicYearId(), request.semester())
+                request.groupId(),
+                request.courseId(),
+                request.academicYearId(),
+                request.semester())
             .isPresent();
     if (alreadyExists) {
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "This group/course/year/semester combination already exists");
     }
 
-    var groupCourse = new GroupCourse();
-    groupCourse.setGroup(group);
-    groupCourse.setCourse(course);
-    groupCourse.setAcademicYear(academicYear);
-    groupCourse.setSemester(request.semester());
+    var toCreate = CourseAssignment.builder().semester(request.semester()).build();
+    var entity = CourseAssignmentMapper.toNewEntity(toCreate, group, course, academicYear);
 
-    return CourseAssignmentResponse.from(groupCourseRepository.save(groupCourse));
+    return CourseAssignmentMapper.toModel(groupCourseRepository.save(entity));
   }
 }

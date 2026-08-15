@@ -1,7 +1,7 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.CourseCreateRequest;
-import api.poja.app.endpoint.rest.dto.CourseResponse;
+import api.poja.app.model.Course;
 import api.poja.app.service.CourseService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,7 +24,7 @@ public class CourseController {
   private final CourseService courseService;
 
   @GetMapping
-  public ResponseEntity<List<CourseResponse>> listCourses(
+  public ResponseEntity<List<Course>> listCourses(
       @RequestParam(name = "page", defaultValue = "0") int page,
       @RequestParam(name = "size", defaultValue = "20") int size) {
     return ResponseEntity.ok(courseService.list(page, size));
@@ -32,8 +32,7 @@ public class CourseController {
 
   @PreAuthorize("hasRole('ADM')")
   @PostMapping
-  public ResponseEntity<CourseResponse> createCourse(
-      @Valid @RequestBody CourseCreateRequest request) {
+  public ResponseEntity<Course> createCourse(@Valid @RequestBody CourseCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(courseService.create(request));
   }
 }
