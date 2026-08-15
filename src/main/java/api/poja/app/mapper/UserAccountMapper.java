@@ -19,5 +19,4 @@ public final class UserAccountMapper {
         .createdAt(entity.getCreatedAt())
         .build();
   }
-
 }

@@ -65,7 +65,6 @@ public class UserAccountService {
     return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
   }
 
-
   private void assignStudentProfileIfMissing(
       UserAccount userAccount, RoleChangeRequest.StudentProfile profile) {
     if (studentRepository.findByUserAccountId(userAccount.getId()).isPresent()) {

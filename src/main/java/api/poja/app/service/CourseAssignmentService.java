@@ -50,17 +50,12 @@ public class CourseAssignmentService {
         academicYearRepository
             .findById(request.academicYearId())
             .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Academic year not found"));
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Academic year not found"));
 
     var alreadyExists =
         groupCourseRepository
             .findByGroupIdAndCourseIdAndAcademicYearIdAndSemester(
-                request.groupId(),
-                request.courseId(),
-                request.academicYearId(),
-                request.semester())
+                request.groupId(), request.courseId(), request.academicYearId(), request.semester())
             .isPresent();
     if (alreadyExists) {
       throw new ResponseStatusException(
