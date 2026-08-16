@@ -1,7 +1,7 @@
-// FILE: src/main/java/api/poja/app/endpoint/rest/controller/StudentController.java
 package api.poja.app.endpoint.rest.controller;
 
-import api.poja.app.endpoint.rest.dto.StudentCreateRequest;
+import api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest;
+import api.poja.app.endpoint.rest.dto.StudentPromotionAndGroupChangeRequest;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.model.Student;
 import api.poja.app.service.StudentService;
@@ -9,12 +9,11 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,8 +41,17 @@ public class StudentController {
   }
 
   @PreAuthorize("hasRole('ADM')")
-  @PostMapping
-  public ResponseEntity<Student> createStudent(@Valid @RequestBody StudentCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(request));
+  @PatchMapping("/{id}/promotion-and-group")
+  public ResponseEntity<Student> changePromotionAndGroup(
+      @PathVariable UUID id,
+      @Valid @RequestBody StudentPromotionAndGroupChangeRequest request) {
+    return ResponseEntity.ok(studentService.changePromotionAndGroup(id, request));
+  }
+
+  @PreAuthorize("hasRole('ADM')")
+  @PatchMapping("/{id}/group")
+  public ResponseEntity<Student> changeGroup(
+      @PathVariable UUID id, @Valid @RequestBody StudentGroupChangeRequest request) {
+    return ResponseEntity.ok(studentService.changeGroup(id, request));
   }
 }

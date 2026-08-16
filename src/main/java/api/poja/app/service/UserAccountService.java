@@ -1,6 +1,8 @@
 package api.poja.app.service;
 
-import api.poja.app.endpoint.rest.dto.RoleChangeRequest;
+import api.poja.app.endpoint.rest.dto.PromoteAdminRequest;
+import api.poja.app.endpoint.rest.dto.PromoteStudentRequest;
+import api.poja.app.endpoint.rest.dto.PromoteTeacherRequest;
 import api.poja.app.entity.Admin;
 import api.poja.app.entity.Student;
 import api.poja.app.entity.Teacher;
@@ -37,6 +39,7 @@ public class UserAccountService {
   private final ProgramRepository programRepository;
   private final PromotionRepository promotionRepository;
   private final SequentialCodeGenerator sequentialCodeGenerator;
+  private final StudentGroupAssignmentService studentGroupAssignmentService;
 
   public List<api.poja.app.model.UserAccount> list(UserRole role, int page, int size) {
     var pageable = PageRequest.of(page, size);
@@ -52,96 +55,83 @@ public class UserAccountService {
   }
 
   @Transactional
-  public api.poja.app.model.UserAccount changeRole(UUID id, RoleChangeRequest request) {
+  public api.poja.app.model.UserAccount promoteToStudent(UUID id, PromoteStudentRequest request) {
     var userAccount = findUserAccountOrThrow(id);
-
-    switch (request.role()) {
-      case STD -> assignStudentProfileIfMissing(userAccount, request.studentProfile());
-      case TEC -> assignTeacherProfileIfMissing(userAccount, request.teacherProfile());
-      case ADM -> assignAdminProfileIfMissing(userAccount, request.adminProfile());
-    }
-
-    userAccount.setRole(request.role());
-    return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
-  }
-
-  private void assignStudentProfileIfMissing(
-      UserAccount userAccount, RoleChangeRequest.StudentProfile profile) {
     if (studentRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
-      return;
-    }
-    if (profile == null
-        || isBlank(profile.firstName())
-        || isBlank(profile.lastName())
-        || profile.program() == null
-        || profile.promotionId() == null) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "studentProfile (firstName, lastName, program, promotionId) is "
-              + "required for a first-time promotion to STD");
+          HttpStatus.BAD_REQUEST, "This account is already a student");
     }
 
     var program =
         programRepository
-            .findByCode(profile.program())
+            .findByCode(request.program())
             .orElseThrow(
                 () ->
                     new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Unknown program: " + profile.program()));
+                        HttpStatus.BAD_REQUEST, "Unknown program: " + request.program()));
     var promotion =
         promotionRepository
-            .findById(profile.promotionId())
+            .findById(request.promotionId())
             .orElseThrow(
                 () ->
                     new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Unknown promotion: " + profile.promotionId()));
+                        HttpStatus.BAD_REQUEST, "Unknown promotion: " + request.promotionId()));
+    var group =
+        studentGroupAssignmentService.findGroupBelongingToPromotionOrThrow(
+            request.groupId(), request.promotionId());
 
     var student = new Student();
     student.setUserAccount(userAccount);
     student.setStudentNumber(nextStudentNumber());
-    student.setFirstName(profile.firstName());
-    student.setLastName(profile.lastName());
+    student.setFirstName(request.firstName());
+    student.setLastName(request.lastName());
     student.setProgram(program);
     student.setPromotion(promotion);
-    studentRepository.save(student);
+    student = studentRepository.save(student);
+
+    studentGroupAssignmentService.createInitialHistory(
+        student, group, request.academicYearId(), request.semester(), request.startDate());
+
+    userAccount.setRole(UserRole.STD);
+    return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
   }
 
-  private void assignTeacherProfileIfMissing(
-      UserAccount userAccount, RoleChangeRequest.TeacherProfile profile) {
+  @Transactional
+  public api.poja.app.model.UserAccount promoteToTeacher(UUID id, PromoteTeacherRequest request) {
+    var userAccount = findUserAccountOrThrow(id);
     if (teacherRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
-      return;
-    }
-    if (profile == null || isBlank(profile.firstName()) || isBlank(profile.lastName())) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "teacherProfile (firstName, lastName) is required for a first-time promotion to TEC");
+          HttpStatus.BAD_REQUEST, "This account is already a teacher");
     }
 
     var teacher = new Teacher();
     teacher.setUserAccount(userAccount);
     teacher.setEmployeeNumber(nextEmployeeNumber());
-    teacher.setFirstName(profile.firstName());
-    teacher.setLastName(profile.lastName());
+    teacher.setFirstName(request.firstName());
+    teacher.setLastName(request.lastName());
     teacherRepository.save(teacher);
+
+    userAccount.setRole(UserRole.TEC);
+    return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
   }
 
-  private void assignAdminProfileIfMissing(
-      UserAccount userAccount, RoleChangeRequest.AdminProfile profile) {
+  @Transactional
+  public api.poja.app.model.UserAccount promoteToAdmin(UUID id, PromoteAdminRequest request) {
+    var userAccount = findUserAccountOrThrow(id);
     if (adminRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
-      return;
-    }
-    if (profile == null || isBlank(profile.firstName()) || isBlank(profile.lastName())) {
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST,
-          "adminProfile (firstName, lastName) is required for a first-time promotion to ADM");
+          HttpStatus.BAD_REQUEST, "This account is already an admin");
     }
 
     var admin = new Admin();
     admin.setUserAccount(userAccount);
     admin.setAdminNumber(nextAdminNumber());
-    admin.setFirstName(profile.firstName());
-    admin.setLastName(profile.lastName());
+    admin.setFirstName(request.firstName());
+    admin.setLastName(request.lastName());
     adminRepository.save(admin);
+
+    userAccount.setRole(UserRole.ADM);
+    return UserAccountMapper.toModel(userAccountRepository.save(userAccount));
   }
 
   private String nextStudentNumber() {
@@ -170,9 +160,5 @@ public class UserAccountService {
         .findById(id)
         .orElseThrow(
             () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User account not found"));
-  }
-
-  private static boolean isBlank(String s) {
-    return s == null || s.isBlank();
   }
 }

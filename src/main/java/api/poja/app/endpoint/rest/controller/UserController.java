@@ -1,6 +1,8 @@
 package api.poja.app.endpoint.rest.controller;
 
-import api.poja.app.endpoint.rest.dto.RoleChangeRequest;
+import api.poja.app.endpoint.rest.dto.PromoteAdminRequest;
+import api.poja.app.endpoint.rest.dto.PromoteStudentRequest;
+import api.poja.app.endpoint.rest.dto.PromoteTeacherRequest;
 import api.poja.app.entity.enums.UserRole;
 import api.poja.app.model.UserAccount;
 import api.poja.app.service.UserAccountService;
@@ -37,9 +39,21 @@ public class UserController {
     return ResponseEntity.ok(userAccountService.getById(id));
   }
 
-  @PatchMapping("/{id}/role")
-  public ResponseEntity<UserAccount> changeRole(
-      @PathVariable UUID id, @Valid @RequestBody RoleChangeRequest request) {
-    return ResponseEntity.ok(userAccountService.changeRole(id, request));
+  @PatchMapping("/{id}/role/student")
+  public ResponseEntity<UserAccount> promoteToStudent(
+      @PathVariable UUID id, @Valid @RequestBody PromoteStudentRequest request) {
+    return ResponseEntity.ok(userAccountService.promoteToStudent(id, request));
+  }
+
+  @PatchMapping("/{id}/role/teacher")
+  public ResponseEntity<UserAccount> promoteToTeacher(
+      @PathVariable UUID id, @Valid @RequestBody PromoteTeacherRequest request) {
+    return ResponseEntity.ok(userAccountService.promoteToTeacher(id, request));
+  }
+
+  @PatchMapping("/{id}/role/admin")
+  public ResponseEntity<UserAccount> promoteToAdmin(
+      @PathVariable UUID id, @Valid @RequestBody PromoteAdminRequest request) {
+    return ResponseEntity.ok(userAccountService.promoteToAdmin(id, request));
   }
 }

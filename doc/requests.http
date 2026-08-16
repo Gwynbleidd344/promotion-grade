@@ -1,0 +1,379 @@
+
+@baseUrl = http://localhost:8080/api/v1
+@contentType = application/json
+
+### On suppose qu'un premier compte ADMIN existe déjà en base (seed / data.sql),
+### car /users/{id}/role/admin nécessite déjà d'être authentifié en ADM.
+@bootstrapUsername = ilo06
+@bootstrapPassword = azertyuiop
+
+
+### ============================================================
+### AUTH & COMPTES
+### ============================================================
+
+### Inscription d'un futur étudiant (role=null au départ)
+# @name registerStudentUser
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "rakoto.jean",
+  "email": "rakoto.jean@hei.mg",
+  "password": "Password123!"
+}
+
+### Inscription d'un futur enseignant
+# @name registerTeacherUser
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "rasoa.marie",
+  "email": "rasoa.marie@hei.mg",
+  "password": "Password123!"
+}
+
+### Login avec le compte admin de bootstrap
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "{{bootstrapUsername}}",
+  "password": "{{bootstrapPassword}}"
+}
+
+### -> jeton admin réutilisé dans toute la suite
+@adminToken = {{loginAdmin.response.body.$.accessToken}}
+
+
+### ============================================================
+### GESTION DES RÔLES (admin only)
+### ============================================================
+
+### Promotion du compte étudiant -> STD
+# Remplacer promotionId / groupId / academicYearId par des UUID existants
+# @name promoteToStudent
+PATCH {{baseUrl}}/users/{{registerStudentUser.response.body.$.id}}/role/student
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "Jean",
+  "lastName": "Rakoto",
+  "program": "EL",
+  "promotionId": "00000000-0000-0000-0000-000000000001",
+  "groupId": "00000000-0000-0000-0000-000000000010",
+  "academicYearId": "00000000-0000-0000-0000-000000000100",
+  "semester": 1,
+  "startDate": "2025-09-01"
+}
+
+### -> id de l'étudiant créé (utilisé plus bas)
+@studentId = {{promoteToStudent.response.body.$.id}}
+
+### Promotion du compte enseignant -> TEC
+# @name promoteToTeacher
+PATCH {{baseUrl}}/users/{{registerTeacherUser.response.body.$.id}}/role/teacher
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "Marie",
+  "lastName": "Rasoa"
+}
+
+### -> id de l'enseignant créé
+@teacherUserId = {{promoteToTeacher.response.body.$.id}}
+
+### Promotion d'un compte -> ADM (exemple, à utiliser avec parcimonie)
+PATCH {{baseUrl}}/users/00000000-0000-0000-0000-000000000099/role/admin
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "firstName": "Admin",
+  "lastName": "Secondaire"
+}
+
+### Liste des comptes (filtrable par rôle)
+GET {{baseUrl}}/users?role=STD&page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+### Détail d'un compte
+GET {{baseUrl}}/users/{{registerStudentUser.response.body.$.id}}
+Authorization: Bearer {{adminToken}}
+
+
+### Login enseignant (une fois le mot de passe connu / mêmes identifiants que l'inscription)
+# @name loginTeacher
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "rasoa.marie",
+  "password": "Password123!"
+}
+@teacherToken = {{loginTeacher.response.body.$.accessToken}}
+
+### Login étudiant
+# @name loginStudent
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "rakoto.jean",
+  "password": "Password123!"
+}
+@studentToken = {{loginStudent.response.body.$.accessToken}}
+
+
+### ============================================================
+### PROMOTIONS
+### ============================================================
+
+### Créer une promotion
+# @name createPromotion
+POST {{baseUrl}}/promotions
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Promotion 2028",
+  "graduationYear": 2028
+}
+@promotionId = {{createPromotion.response.body.$.id}}
+
+### Lister les promotions
+GET {{baseUrl}}/promotions?page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### GROUPES
+### ============================================================
+
+### Créer un groupe
+# @name createGroup
+POST {{baseUrl}}/groups
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "reference": "K1",
+  "name": "Groupe K1"
+}
+@groupId = {{createGroup.response.body.$.id}}
+
+### Lister les groupes
+GET {{baseUrl}}/groups?page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+### Lier le groupe à la promotion (obligatoire avant toute affectation d'étudiant)
+POST {{baseUrl}}/promotions/{{promotionId}}/groups/{{groupId}}
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### ÉTUDIANTS
+### ============================================================
+
+### Lister les étudiants (filtrable par promotion / parcours)
+GET {{baseUrl}}/students?promotionId={{promotionId}}&programCode=EL&page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+### Détail d'un étudiant
+GET {{baseUrl}}/students/{{studentId}}
+Authorization: Bearer {{adminToken}}
+
+### Changer promotion + groupe d'un étudiant (ex : redoublement)
+PATCH {{baseUrl}}/students/{{studentId}}/promotion-and-group
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "promotionId": "{{promotionId}}",
+  "groupId": "{{groupId}}",
+  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "semester": 1,
+  "startDate": "2026-09-01"
+}
+
+### Changer uniquement le groupe (doit appartenir à la même promotion)
+PATCH {{baseUrl}}/students/{{studentId}}/group
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "groupId": "{{groupId}}",
+  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "semester": 2,
+  "startDate": "2027-02-01"
+}
+
+### Historique des groupes d'un étudiant
+GET {{baseUrl}}/students/{{studentId}}/group-history
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### ENSEIGNANTS
+### ============================================================
+
+### Lister les enseignants
+GET {{baseUrl}}/teachers?page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### COURS
+### ============================================================
+
+### Créer un cours
+# @name createCourse
+POST {{baseUrl}}/courses
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "reference": "PROG4",
+  "title": "Programmation avancée",
+  "credits": 6
+}
+@courseId = {{createCourse.response.body.$.id}}
+
+### Lister les cours
+GET {{baseUrl}}/courses?page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### AFFECTATIONS DE COURS (GroupCourse)
+### ============================================================
+
+### Affecter un cours à un groupe pour une année/semestre donnés
+# @name createAssignment
+POST {{baseUrl}}/course-assignments
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "groupId": "{{groupId}}",
+  "courseId": "{{courseId}}",
+  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "semester": 1
+}
+@courseAssignmentId = {{createAssignment.response.body.$.id}}
+
+### Lister les affectations (filtrable par groupe/cours/année/semestre)
+GET {{baseUrl}}/course-assignments?groupId={{groupId}}&academicYearId=00000000-0000-0000-0000-000000000101&semester=1
+Authorization: Bearer {{adminToken}}
+
+### Assigner un enseignant à l'affectation de cours
+POST {{baseUrl}}/course-assignments/{{courseAssignmentId}}/teachers/{{teacherUserId}}
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### EXAMENS
+### ============================================================
+
+### Créer un examen (somme des coefficients d'un même cours doit valoir 1)
+# @name createExam
+POST {{baseUrl}}/course-assignments/{{courseAssignmentId}}/exams
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Contrôle continu",
+  "examDate": "2026-11-15",
+  "examTime": "08:00:00",
+  "coefficient": 0.4
+}
+@examId = {{createExam.response.body.$.id}}
+
+### Deuxième examen du même cours (coefficient complémentaire)
+POST {{baseUrl}}/course-assignments/{{courseAssignmentId}}/exams
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "Examen final",
+  "examDate": "2027-01-20",
+  "examTime": "08:00:00",
+  "coefficient": 0.6
+}
+
+### Lister les examens d'une affectation de cours
+GET {{baseUrl}}/course-assignments/{{courseAssignmentId}}/exams
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### NOTES
+### ============================================================
+
+### Saisir une note (enseignant assigné au cours, ou admin)
+# @name createGrade
+POST {{baseUrl}}/exams/{{examId}}/grades
+Content-Type: {{contentType}}
+Authorization: Bearer {{teacherToken}}
+
+{
+  "studentId": "{{studentId}}",
+  "value": 14.5
+}
+@gradeId = {{createGrade.response.body.$.id}}
+
+### Modifier une note existante (historisation automatique)
+PUT {{baseUrl}}/grades/{{gradeId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{teacherToken}}
+
+{
+  "value": 15.5,
+  "reason": "Réclamation étudiant - erreur de saisie"
+}
+
+### Historique des modifications d'une note
+GET {{baseUrl}}/grades/{{gradeId}}/history
+Authorization: Bearer {{adminToken}}
+
+### Notes d'un étudiant (filtrable par cours / année)
+GET {{baseUrl}}/students/{{studentId}}/grades?courseId={{courseId}}
+Authorization: Bearer {{studentToken}}
+
+
+### ============================================================
+### RELEVÉS DE NOTES (TRANSCRIPTS)
+### ============================================================
+
+### Générer le relevé de notes d'une année (PDF stocké sur S3)
+POST {{baseUrl}}/students/{{studentId}}/transcripts/2025-2026/generate
+Authorization: Bearer {{adminToken}}
+
+### Lister les relevés d'un étudiant
+GET {{baseUrl}}/students/{{studentId}}/transcripts
+Authorization: Bearer {{studentToken}}
+
+### Envoyer le relevé par email (traitement potentiellement asynchrone)
+POST {{baseUrl}}/students/{{studentId}}/transcripts/2025-2026/send
+Authorization: Bearer {{adminToken}}
+
+
+### ============================================================
+### DIPLOMATION
+### ============================================================
+
+### Statut de diplomation d'un étudiant
+GET {{baseUrl}}/students/{{studentId}}/graduation
+Authorization: Bearer {{studentToken}}
+
+### Liste des diplômés d'une promotion (triée par rang)
+GET {{baseUrl}}/promotions/{{promotionId}}/graduates?programCode=EL
+Authorization: Bearer {{adminToken}}
+
+### Export XLSX de la liste des diplômés (stocké sur S3, URL de téléchargement)
+GET {{baseUrl}}/promotions/{{promotionId}}/graduates/export
+Authorization: Bearer {{adminToken}}
