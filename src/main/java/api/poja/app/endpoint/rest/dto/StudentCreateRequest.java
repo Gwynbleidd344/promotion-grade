@@ -8,10 +8,10 @@ import jakarta.validation.constraints.Size;
 import java.util.UUID;
 
 public record StudentCreateRequest(
-        @NotBlank String username,
-        @NotBlank @Email String email,
-        @NotBlank @Size(min = 8) String password,
-        @NotBlank String firstName,
-        @NotBlank String lastName,
-        @NotNull ProgramCode program,
-        @NotNull UUID promotionId) {}
+    @NotBlank String username,
+    @NotBlank @Email String email,
+    @NotBlank @Size(min = 8) String password,
+    @NotBlank String firstName,
+    @NotBlank String lastName,
+    @NotNull ProgramCode program,
+    @NotNull UUID promotionId) {}

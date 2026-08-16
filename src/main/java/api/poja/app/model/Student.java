@@ -12,11 +12,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Student {
-    private UUID id;
-    private String studentNumber;
-    private String firstName;
-    private String lastName;
-    private ProgramCode program;
-    private UUID promotionId;
-    private UUID userAccountId;
+  private UUID id;
+  private String studentNumber;
+  private String firstName;
+  private String lastName;
+  private ProgramCode program;
+  private UUID promotionId;
+  private UUID userAccountId;
 }

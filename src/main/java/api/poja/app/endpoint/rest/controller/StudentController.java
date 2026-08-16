@@ -25,25 +25,25 @@ import org.springframework.web.bind.annotation.RestController;
 @AllArgsConstructor
 public class StudentController {
 
-    private final StudentService studentService;
+  private final StudentService studentService;
 
-    @GetMapping
-    public ResponseEntity<List<Student>> listStudents(
-            @RequestParam(required = false) UUID promotionId,
-            @RequestParam(required = false) ProgramCode programCode,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
-        return ResponseEntity.ok(studentService.list(promotionId, programCode, page, size));
-    }
+  @GetMapping
+  public ResponseEntity<List<Student>> listStudents(
+      @RequestParam(required = false) UUID promotionId,
+      @RequestParam(required = false) ProgramCode programCode,
+      @RequestParam(name = "page", defaultValue = "0") int page,
+      @RequestParam(name = "size", defaultValue = "20") int size) {
+    return ResponseEntity.ok(studentService.list(promotionId, programCode, page, size));
+  }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
-        return ResponseEntity.ok(studentService.getById(id));
-    }
+  @GetMapping("/{id}")
+  public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
+    return ResponseEntity.ok(studentService.getById(id));
+  }
 
-    @PreAuthorize("hasRole('ADM')")
-    @PostMapping
-    public ResponseEntity<Student> createStudent(@Valid @RequestBody StudentCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(request));
-    }
+  @PreAuthorize("hasRole('ADM')")
+  @PostMapping
+  public ResponseEntity<Student> createStudent(@Valid @RequestBody StudentCreateRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(studentService.create(request));
+  }
 }

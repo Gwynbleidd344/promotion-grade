@@ -24,11 +24,11 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
   List<Student> findByPromotionIdAndProgramId(UUID promotionId, UUID programId);
 
   @Query(
-          "select s from Student s where "
-                  + "(:promotionId is null or s.promotion.id = :promotionId) "
-                  + "and (:programCode is null or s.program.code = :programCode)")
+      "select s from Student s where "
+          + "(:promotionId is null or s.promotion.id = :promotionId) "
+          + "and (:programCode is null or s.program.code = :programCode)")
   Page<Student> findAllFiltered(
-          @Param("promotionId") UUID promotionId,
-          @Param("programCode") ProgramCode programCode,
-          Pageable pageable);
+      @Param("promotionId") UUID promotionId,
+      @Param("programCode") ProgramCode programCode,
+      Pageable pageable);
 }
