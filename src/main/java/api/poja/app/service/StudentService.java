@@ -24,6 +24,7 @@ public class StudentService {
   private final PromotionRepository promotionRepository;
   private final StudentGroupAssignmentService studentGroupAssignmentService;
 
+  @Transactional(readOnly = true)
   public List<Student> list(UUID promotionId, ProgramCode programCode, int page, int size) {
     return studentRepository
         .findAllFiltered(promotionId, programCode, PageRequest.of(page, size))
@@ -31,6 +32,7 @@ public class StudentService {
         .getContent();
   }
 
+  @Transactional(readOnly = true)
   public Student getById(UUID id) {
     return StudentMapper.toModel(findStudentOrThrow(id));
   }
