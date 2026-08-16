@@ -19,6 +19,7 @@ tags:
   - name: Courses
   - name: Groups
   - name: Promotions
+  - name: Academic Years
   - name: Group History
   - name: Course Assignments
   - name: Exams
@@ -533,6 +534,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /academic-years:
+    get:
+      tags: [Academic Years]
+      summary: List academic years
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: List of academic years, sorted by start date ascending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AcademicYear"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Academic Years]
+      summary: Create an academic year
+      description: >
+        Defines a school year (e.g. "2025-2026") used throughout the app as
+        academicYearId: course assignments, student group history, academic
+        reports/transcripts, exams. endDate must be strictly after startDate,
+        the label must be unique, and the date range must not overlap an
+        existing academic year.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcademicYearCreateRequest"
+      responses:
+        "201":
+          description: Academic year created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcademicYear"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /course-assignments:
     get:
@@ -1368,6 +1416,20 @@ components:
         id:
           type: string
           format: uuid
+        label:
+          type: string
+          example: "2025-2026"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    AcademicYearCreateRequest:
+      type: object
+      required: [label, startDate, endDate]
+      properties:
         label:
           type: string
           example: "2025-2026"
