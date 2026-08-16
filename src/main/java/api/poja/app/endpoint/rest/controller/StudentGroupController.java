@@ -29,7 +29,7 @@ public class StudentGroupController {
     return ResponseEntity.ok(studentGroupService.list(page, size));
   }
 
- @PostMapping
+  @PostMapping
   public ResponseEntity<StudentGroup> createGroup(
       @Valid @RequestBody StudentGroupCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(studentGroupService.create(request));
