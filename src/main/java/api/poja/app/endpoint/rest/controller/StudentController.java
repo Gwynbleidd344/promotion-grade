@@ -40,14 +40,12 @@ public class StudentController {
     return ResponseEntity.ok(studentService.getById(id));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PatchMapping("/{id}/promotion-and-group")
   public ResponseEntity<Student> changePromotionAndGroup(
       @PathVariable UUID id, @Valid @RequestBody StudentPromotionAndGroupChangeRequest request) {
     return ResponseEntity.ok(studentService.changePromotionAndGroup(id, request));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PatchMapping("/{id}/group")
   public ResponseEntity<Student> changeGroup(
       @PathVariable UUID id, @Valid @RequestBody StudentGroupChangeRequest request) {

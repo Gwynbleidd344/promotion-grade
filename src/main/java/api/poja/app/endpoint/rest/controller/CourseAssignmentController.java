@@ -38,14 +38,12 @@ public class CourseAssignmentController {
         courseAssignmentService.list(groupId, courseId, academicYearId, semester));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping
   public ResponseEntity<CourseAssignment> createCourseAssignment(
       @Valid @RequestBody CourseAssignmentCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping("/{id}/teachers/{teacherId}")
   public ResponseEntity<CourseTeacher> assignTeacher(
       @PathVariable UUID id, @PathVariable UUID teacherId) {

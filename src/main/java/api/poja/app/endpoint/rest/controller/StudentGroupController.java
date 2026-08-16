@@ -8,7 +8,6 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,8 +29,7 @@ public class StudentGroupController {
     return ResponseEntity.ok(studentGroupService.list(page, size));
   }
 
-  @PreAuthorize("hasRole('ADM')")
-  @PostMapping
+ @PostMapping
   public ResponseEntity<StudentGroup> createGroup(
       @Valid @RequestBody StudentGroupCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(studentGroupService.create(request));

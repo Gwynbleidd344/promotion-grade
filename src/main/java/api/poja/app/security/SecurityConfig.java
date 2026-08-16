@@ -3,11 +3,11 @@ package api.poja.app.security;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,7 +18,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 @AllArgsConstructor
 public class SecurityConfig {
 
@@ -41,6 +40,24 @@ public class SecurityConfig {
                     .requestMatchers("/ping", "/health/**")
                     .permitAll()
                     .requestMatchers("/api/v1/users/**")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/academic-years")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/courses")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/groups")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/promotions")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/promotions/*/groups/*")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/course-assignments")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/course-assignments/*/teachers/*")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/students/*/promotion-and-group")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.PATCH, "/api/v1/students/*/group")
                     .hasRole("ADM")
                     .requestMatchers("/api/v1/teachers/**")
                     .authenticated()
