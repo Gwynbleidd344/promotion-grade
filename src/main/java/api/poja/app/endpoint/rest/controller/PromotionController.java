@@ -9,7 +9,6 @@ import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,14 +31,12 @@ public class PromotionController {
     return ResponseEntity.ok(promotionService.list(page, size));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping
   public ResponseEntity<Promotion> createPromotion(
       @Valid @RequestBody PromotionCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(promotionService.create(request));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping("/{id}/groups/{groupId}")
   public ResponseEntity<Void> addGroupToPromotion(
       @PathVariable UUID id, @PathVariable UUID groupId) {
