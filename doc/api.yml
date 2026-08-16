@@ -58,9 +58,10 @@ paths:
       description: >
         Creates a new user account (username, email, password). The account
         is created with no business role assigned yet (role = null); an
-        admin must subsequently promote it to STD, TEC, or ADM via
-        PATCH /users/{id}/role. Open to unauthenticated callers so people
-        can self-register before being assigned a role by an admin.
+        admin must subsequently promote it to STD, TEC, or ADM via one of
+        PATCH /users/{id}/role/student, PATCH /users/{id}/role/teacher, or
+        PATCH /users/{id}/role/admin. Open to unauthenticated callers so
+        people can self-register before being assigned a role by an admin.
       security: []
       requestBody:
         required: true
@@ -126,17 +127,16 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /users/{id}/role:
+  /users/{id}/role/student:
     patch:
       tags: [Accounts]
-      summary: Transform a user account into ADM, STD, or TEC
+      summary: Promote a user account to STD
       description: >
-        Assigns or changes the business role of a user account. Choosing
-        STD or TEC also creates the corresponding Student or Teacher profile
-        record (studentNumber/employeeNumber, first name, last name, and,
-        for STD, program and promotion) if one does not already exist for
-        this account. Choosing ADM only sets the role, since admins have no
-        separate profile entity. Admin-only operation.
+        Creates the Student profile (studentNumber generated server-side)
+        and assigns an initial promotion and group in the same call. Creates
+        the first StudentGroupHistory entry. groupId must already be linked
+        to promotionId (see POST /promotions/{id}/groups/{groupId}).
+        Admin-only.
       parameters:
         - $ref: "#/components/parameters/UserId"
       requestBody:
@@ -144,7 +144,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RoleChangeRequest"
+              $ref: "#/components/schemas/PromoteStudentRequest"
       responses:
         "200":
           description: Role updated
@@ -154,13 +154,74 @@ paths:
                 $ref: "#/components/schemas/UserAccount"
         "400":
           description: >
-            Invalid request, e.g. missing profile fields required for the
-            chosen role (studentNumber/program/promotionId for STD,
-            employeeNumber for TEC)
+            Invalid request, e.g. unknown program/promotion, or groupId not
+            linked to promotionId
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{id}/role/teacher:
+    patch:
+      tags: [Accounts]
+      summary: Promote a user account to TEC
+      description: >
+        Creates the Teacher profile (employeeNumber generated server-side).
+        Admin-only.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteTeacherRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /users/{id}/role/admin:
+    patch:
+      tags: [Accounts]
+      summary: Promote a user account to ADM
+      description: >
+        Creates the Admin profile (adminNumber generated server-side).
+        Admin-only.
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteAdminRequest"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAccount"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -190,28 +251,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-    post:
-      tags: [Students]
-      summary: Create a student
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StudentCreateRequest"
-      responses:
-        "201":
-          description: Student created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Student"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
 
   /students/{id}:
     get:
@@ -226,6 +265,96 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Student"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /students/{id}/promotion-and-group:
+    patch:
+      tags: [Group History]
+      summary: Change a student's promotion and group together
+      description: >
+        For later use (e.g. redoing a year, moving groups mid-program).
+        groupId must already be linked to promotionId. Appends a new
+        StudentGroupHistory entry and closes the previous open entry
+        (sets its endDate to the new entry's startDate). Never deletes
+        previous entries.
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentPromotionAndGroupChangeRequest"
+      responses:
+        "200":
+          description: Student updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /students/{id}/group:
+    patch:
+      tags: [Group History]
+      summary: Change a student's group only
+      description: >
+        The target group must belong to the student's current promotion;
+        rejected otherwise. Appends a new StudentGroupHistory entry and
+        closes the previous open entry (sets its endDate to the new entry's
+        startDate). Never deletes previous entries.
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentGroupChangeRequest"
+      responses:
+        "200":
+          description: Student updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /students/{id}/group-history:
+    get:
+      tags: [Group History]
+      summary: View a student's group history
+      parameters:
+        - $ref: "#/components/parameters/StudentId"
+        - $ref: "#/components/parameters/AcademicYearId"
+      responses:
+        "200":
+          description: Student's group history, ordered by start date
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StudentGroupHistory"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -249,28 +378,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Teacher"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-    post:
-      tags: [Teachers]
-      summary: Create a teacher
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TeacherCreateRequest"
-      responses:
-        "201":
-          description: Teacher created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Teacher"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -399,57 +506,33 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /students/{id}/group-history:
+  /promotions/{id}/groups/{groupId}:
     post:
-      tags: [Group History]
-      summary: Add a group history entry for a student
+      tags: [Promotions]
+      summary: Link a group to a promotion
       description: >
-        Records a group change (new group, academic year, semester, dates).
-        Never deletes previous entries or grades already obtained.
+        Declares that this group is a valid group for this promotion. This
+        link is the source of truth used to validate groupId on student
+        creation, on PATCH /students/{id}/promotion-and-group, and on
+        PATCH /students/{id}/group.
       parameters:
-        - $ref: "#/components/parameters/StudentId"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/StudentGroupHistoryCreateRequest"
+        - $ref: "#/components/parameters/PromotionIdPath"
+        - $ref: "#/components/parameters/GroupIdPath"
       responses:
         "201":
-          description: History entry created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/StudentGroupHistory"
-        "400":
-          $ref: "#/components/responses/BadRequest"
+          description: Group linked to promotion
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-    get:
-      tags: [Group History]
-      summary: View a student's group history
-      parameters:
-        - $ref: "#/components/parameters/StudentId"
-        - $ref: "#/components/parameters/AcademicYearId"
-      responses:
-        "200":
-          description: Student's group history, ordered by start date
+        "409":
+          description: This group is already linked to this promotion
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/StudentGroupHistory"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: "#/components/schemas/Error"
 
   /course-assignments:
     get:
@@ -894,6 +977,14 @@ components:
       schema:
         type: string
         format: uuid
+    GroupIdPath:
+      name: groupId
+      in: path
+      required: true
+      description: Group identifier
+      schema:
+        type: string
+        format: uuid
     AcademicYearId:
       name: academicYearId
       in: query
@@ -1084,39 +1175,87 @@ components:
           type: string
           format: date-time
 
-    RoleChangeRequest:
+    PromoteStudentRequest:
       type: object
-      required: [role]
+      required:
+        [firstName, lastName, program, promotionId, groupId, academicYearId, semester, startDate]
       properties:
-        role:
-          $ref: "#/components/schemas/UserRole"
-        studentProfile:
-          description: Required when role is STD, for a first-time promotion to STD
-          type: object
-          nullable: true
-          properties:
-            studentNumber:
-              type: string
-            firstName:
-              type: string
-            lastName:
-              type: string
-            program:
-              $ref: "#/components/schemas/ProgramCode"
-            promotionId:
-              type: string
-              format: uuid
-        teacherProfile:
-          description: Required when role is TEC, for a first-time promotion to TEC
-          type: object
-          nullable: true
-          properties:
-            employeeNumber:
-              type: string
-            firstName:
-              type: string
-            lastName:
-              type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        program:
+          $ref: "#/components/schemas/ProgramCode"
+        promotionId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        academicYearId:
+          type: string
+          format: uuid
+        semester:
+          type: integer
+          enum: [1, 2]
+        startDate:
+          type: string
+          format: date
+
+    PromoteTeacherRequest:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    PromoteAdminRequest:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+
+    StudentPromotionAndGroupChangeRequest:
+      type: object
+      required: [promotionId, groupId, academicYearId, semester, startDate]
+      properties:
+        promotionId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        academicYearId:
+          type: string
+          format: uuid
+        semester:
+          type: integer
+          enum: [1, 2]
+        startDate:
+          type: string
+          format: date
+
+    StudentGroupChangeRequest:
+      type: object
+      required: [groupId, academicYearId, semester, startDate]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        academicYearId:
+          type: string
+          format: uuid
+        semester:
+          type: integer
+          enum: [1, 2]
+        startDate:
+          type: string
+          format: date
 
     Student:
       type: object
@@ -1140,27 +1279,6 @@ components:
           type: string
           format: uuid
 
-    StudentCreateRequest:
-      type: object
-      required: [studentNumber, firstName, lastName, program, promotionId, username, email]
-      properties:
-        studentNumber:
-          type: string
-        firstName:
-          type: string
-        lastName:
-          type: string
-        program:
-          $ref: "#/components/schemas/ProgramCode"
-        promotionId:
-          type: string
-          format: uuid
-        username:
-          type: string
-        email:
-          type: string
-          format: email
-
     Teacher:
       type: object
       properties:
@@ -1176,16 +1294,6 @@ components:
         userAccountId:
           type: string
           format: uuid
-
-    TeacherCreateRequest:
-      type: object
-      required: [ username, email, password, firstName, lastName ]
-      properties:
-        username: { type: string }
-        email: { type: string, format: email }
-        password: { type: string, format: password, minLength: 8 }
-        firstName: { type: string }
-        lastName: { type: string }
 
     Course:
       type: object
@@ -1279,27 +1387,6 @@ components:
         studentId:
           type: string
           format: uuid
-        groupId:
-          type: string
-          format: uuid
-        academicYearId:
-          type: string
-          format: uuid
-        semester:
-          type: integer
-          enum: [1, 2]
-        startDate:
-          type: string
-          format: date
-        endDate:
-          type: string
-          format: date
-          nullable: true
-
-    StudentGroupHistoryCreateRequest:
-      type: object
-      required: [groupId, academicYearId, semester, startDate]
-      properties:
         groupId:
           type: string
           format: uuid
