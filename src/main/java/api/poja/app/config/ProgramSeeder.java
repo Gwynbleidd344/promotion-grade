@@ -8,14 +8,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-/**
- * Seeds the {@link Program} table on startup.
- *
- * <p>This intentionally runs as an {@link ApplicationRunner} rather than a Flyway migration: Flyway
- * migrations execute before Hibernate's {@code ddl-auto: update} creates the schema, so a SQL
- * migration inserting into {@code program} would fail with "relation program does not exist".
- * Running after context startup guarantees the table already exists.
- */
 @Component
 @AllArgsConstructor
 public class ProgramSeeder implements ApplicationRunner {
