@@ -43,8 +43,7 @@ public class StudentController {
   @PreAuthorize("hasRole('ADM')")
   @PatchMapping("/{id}/promotion-and-group")
   public ResponseEntity<Student> changePromotionAndGroup(
-      @PathVariable UUID id,
-      @Valid @RequestBody StudentPromotionAndGroupChangeRequest request) {
+      @PathVariable UUID id, @Valid @RequestBody StudentPromotionAndGroupChangeRequest request) {
     return ResponseEntity.ok(studentService.changePromotionAndGroup(id, request));
   }
 

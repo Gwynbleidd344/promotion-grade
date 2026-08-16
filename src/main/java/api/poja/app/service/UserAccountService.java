@@ -119,8 +119,7 @@ public class UserAccountService {
   public api.poja.app.model.UserAccount promoteToAdmin(UUID id, PromoteAdminRequest request) {
     var userAccount = findUserAccountOrThrow(id);
     if (adminRepository.findByUserAccountId(userAccount.getId()).isPresent()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "This account is already an admin");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This account is already an admin");
     }
 
     var admin = new Admin();
