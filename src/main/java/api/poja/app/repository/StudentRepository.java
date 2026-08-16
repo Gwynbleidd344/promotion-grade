@@ -31,4 +31,12 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
       @Param("promotionId") UUID promotionId,
       @Param("programCode") ProgramCode programCode,
       Pageable pageable);
+
+  @Query(
+      "select s from Student s "
+          + "join fetch s.program "
+          + "join fetch s.promotion "
+          + "join fetch s.userAccount "
+          + "where s.userAccount.id = :userAccountId")
+  Optional<Student> findByUserAccountIdWithAssociations(@Param("userAccountId") UUID userAccountId);
 }
