@@ -147,15 +147,15 @@ class StudentControllerIT extends IntegrationTestSupport {
     var fixture = createLinkedPromotionAndGroup(admin);
     var user = register("grouphistorystudent");
     var student =
-            promoteToStudent(
-                    admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
+        promoteToStudent(
+            admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
 
     var response =
-            restTemplate.exchange(
-                    API + "/students/" + student.getId() + "/group-history",
-                    HttpMethod.GET,
-                    new HttpEntity<>(authHeaders(admin)),
-                    new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
+        restTemplate.exchange(
+            API + "/students/" + student.getId() + "/group-history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(admin)),
+            new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).hasSize(1);
@@ -173,8 +173,8 @@ class StudentControllerIT extends IntegrationTestSupport {
     var fixture = createLinkedPromotionAndGroup(admin);
     var user = register("grouphistorychange");
     var student =
-            promoteToStudent(
-                    admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
+        promoteToStudent(
+            admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
 
     var secondGroup = createGroup(admin);
     linkGroupToPromotion(admin, fixture.promotion().getId(), secondGroup.getId());
@@ -182,22 +182,18 @@ class StudentControllerIT extends IntegrationTestSupport {
     var changeDate = fixture.academicYear().getStartDate().plusMonths(6);
 
     var changeRequest =
-            new api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest(
-                    secondGroup.getId(), secondAcademicYear.getId(), 2, changeDate);
+        new api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest(
+            secondGroup.getId(), secondAcademicYear.getId(), 2, changeDate);
     var changeResponse =
-            patch(
-                    API + "/students/" + student.getId() + "/group",
-                    admin,
-                    changeRequest,
-                    Student.class);
+        patch(API + "/students/" + student.getId() + "/group", admin, changeRequest, Student.class);
     assertThat(changeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
     var response =
-            restTemplate.exchange(
-                    API + "/students/" + student.getId() + "/group-history",
-                    HttpMethod.GET,
-                    new HttpEntity<>(authHeaders(admin)),
-                    new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
+        restTemplate.exchange(
+            API + "/students/" + student.getId() + "/group-history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(admin)),
+            new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).hasSize(2);
@@ -219,21 +215,21 @@ class StudentControllerIT extends IntegrationTestSupport {
     var fixture = createLinkedPromotionAndGroup(admin);
     var user = register("grouphistoryfiltered");
     var student =
-            promoteToStudent(
-                    admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
+        promoteToStudent(
+            admin, user.getId(), fixture.promotion(), fixture.group(), fixture.academicYear());
 
     var otherAcademicYear = createAcademicYear(admin);
 
     var response =
-            restTemplate.exchange(
-                    API
-                            + "/students/"
-                            + student.getId()
-                            + "/group-history?academicYearId="
-                            + otherAcademicYear.getId(),
-                    HttpMethod.GET,
-                    new HttpEntity<>(authHeaders(admin)),
-                    new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
+        restTemplate.exchange(
+            API
+                + "/students/"
+                + student.getId()
+                + "/group-history?academicYearId="
+                + otherAcademicYear.getId(),
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(admin)),
+            new ParameterizedTypeReference<List<StudentGroupHistory>>() {});
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).isEmpty();
@@ -244,10 +240,7 @@ class StudentControllerIT extends IntegrationTestSupport {
     var admin = bootstrapAdminToken();
 
     var response =
-            get(
-                    API + "/students/" + UUID.randomUUID() + "/group-history",
-                    admin,
-                    ErrorResponse.class);
+        get(API + "/students/" + UUID.randomUUID() + "/group-history", admin, ErrorResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
