@@ -9,6 +9,7 @@ import api.poja.app.endpoint.rest.dto.GradeUpdateRequest;
 import api.poja.app.model.CourseTeacher;
 import api.poja.app.model.Exam;
 import api.poja.app.model.Grade;
+import api.poja.app.model.GradeHistory;
 import api.poja.app.repository.TeacherRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -174,8 +175,7 @@ class GradeControllerIT extends IntegrationTestSupport {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
-  private <T> ResponseEntity<T> put(
-      String path, String token, Object body, Class<T> responseType) {
+  private <T> ResponseEntity<T> put(String path, String token, Object body, Class<T> responseType) {
     return restTemplate.exchange(
         path, HttpMethod.PUT, new HttpEntity<>(body, authHeaders(token)), responseType);
   }
@@ -264,10 +264,93 @@ class GradeControllerIT extends IntegrationTestSupport {
     var otherStudentToken = login(otherStudentUser.getUsername(), DEFAULT_PASSWORD);
 
     var response =
-        get(
-            API + "/students/" + fixture.studentId() + "/grades",
-            otherStudentToken,
-            String.class);
+        get(API + "/students/" + fixture.studentId() + "/grades", otherStudentToken, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void teacher_views_grade_history_after_update() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    put(
+        API + "/grades/" + grade.getId(),
+        fixture.teacherToken(),
+        new GradeUpdateRequest(new BigDecimal("13"), "Erreur de saisie"),
+        Grade.class);
+
+    var response =
+        restTemplate.exchange(
+            API + "/grades/" + grade.getId() + "/history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(fixture.teacherToken())),
+            new ParameterizedTypeReference<List<GradeHistory>>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).hasSize(1);
+    assertThat(response.getBody().get(0).getOldValue()).isEqualByComparingTo("8");
+    assertThat(response.getBody().get(0).getNewValue()).isEqualByComparingTo("13");
+    assertThat(response.getBody().get(0).getReason()).isEqualTo("Erreur de saisie");
+  }
+
+  @Test
+  void student_can_view_own_grade_history() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    put(
+        API + "/grades/" + grade.getId(),
+        fixture.teacherToken(),
+        new GradeUpdateRequest(new BigDecimal("13"), null),
+        Grade.class);
+
+    var response =
+        restTemplate.exchange(
+            API + "/grades/" + grade.getId() + "/history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(fixture.studentToken())),
+            new ParameterizedTypeReference<List<GradeHistory>>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).hasSize(1);
+  }
+
+  @Test
+  void another_student_cannot_view_grade_history() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    var otherFixture = createLinkedPromotionAndGroup(admin);
+    var otherStudentUser = register("otherhistorystudent");
+    promoteToStudent(
+        admin,
+        otherStudentUser.getId(),
+        otherFixture.promotion(),
+        otherFixture.group(),
+        otherFixture.academicYear());
+    var otherStudentToken = login(otherStudentUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        get(API + "/grades/" + grade.getId() + "/history", otherStudentToken, String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
   }
