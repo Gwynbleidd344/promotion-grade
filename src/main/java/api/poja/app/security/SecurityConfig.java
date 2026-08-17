@@ -29,12 +29,12 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
-            .exceptionHandling(
-                    handling ->
-                            handling
-                                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                                    .accessDeniedHandler(jwtAccessDeniedHandler))
-            .sessionManagement(
+        .exceptionHandling(
+            handling ->
+                handling
+                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                    .accessDeniedHandler(jwtAccessDeniedHandler))
+        .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authenticationProvider(authenticationProvider())
         .authorizeHttpRequests(
