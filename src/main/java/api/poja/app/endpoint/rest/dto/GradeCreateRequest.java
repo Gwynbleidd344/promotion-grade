@@ -7,5 +7,4 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record GradeCreateRequest(
-    @NotNull UUID studentId,
-    @NotNull @DecimalMin("0") @DecimalMax("20") BigDecimal value) {}
+    @NotNull UUID studentId, @NotNull @DecimalMin("0") @DecimalMax("20") BigDecimal value) {}

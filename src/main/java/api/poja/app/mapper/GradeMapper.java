@@ -25,7 +25,8 @@ public final class GradeMapper {
         .build();
   }
 
-  public static api.poja.app.entity.Grade toNewEntity(Student student, Exam exam, BigDecimal value) {
+  public static api.poja.app.entity.Grade toNewEntity(
+      Student student, Exam exam, BigDecimal value) {
     var entity = new api.poja.app.entity.Grade();
     entity.setStudent(student);
     entity.setExam(exam);
