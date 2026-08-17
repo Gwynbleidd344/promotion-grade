@@ -6,6 +6,7 @@ import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.UserRole;
 import api.poja.app.mapper.GradeMapper;
 import api.poja.app.model.Grade;
+import api.poja.app.model.GradeHistory;
 import api.poja.app.repository.ExamRepository;
 import api.poja.app.repository.GradeHistoryRepository;
 import api.poja.app.repository.GradeRepository;
@@ -66,6 +67,21 @@ public class GradeService {
 
     return gradeRepository.findByStudentIdFiltered(studentId, courseId, academicYearId).stream()
         .map(GradeMapper::toModel)
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public java.util.List<GradeHistory> history(UUID gradeId) {
+    var entity =
+        gradeRepository
+            .findById(gradeId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade not found"));
+
+    checkOwnerOrStaff(entity.getStudent());
+
+    return gradeHistoryRepository.findByGradeIdOrderByChangedAtDesc(gradeId).stream()
+        .map(GradeMapper::toHistoryModel)
         .toList();
   }
 
