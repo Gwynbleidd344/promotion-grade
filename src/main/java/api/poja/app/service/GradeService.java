@@ -1,14 +1,17 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.GradeCreateRequest;
+import api.poja.app.endpoint.rest.dto.GradeUpdateRequest;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.UserRole;
 import api.poja.app.mapper.GradeMapper;
 import api.poja.app.model.Grade;
 import api.poja.app.repository.ExamRepository;
+import api.poja.app.repository.GradeHistoryRepository;
 import api.poja.app.repository.GradeRepository;
 import api.poja.app.repository.StudentRepository;
 import api.poja.app.repository.TeacherRepository;
+import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class GradeService {
 
   private final GradeRepository gradeRepository;
+  private final GradeHistoryRepository gradeHistoryRepository;
   private final ExamRepository examRepository;
   private final StudentRepository studentRepository;
   private final TeacherRepository teacherRepository;
@@ -47,6 +51,30 @@ public class GradeService {
     }
 
     var entity = GradeMapper.toNewEntity(student, exam, request.value());
+    return GradeMapper.toModel(gradeRepository.save(entity));
+  }
+
+  @Transactional
+  public Grade update(UUID gradeId, GradeUpdateRequest request) {
+    var entity =
+        gradeRepository
+            .findById(gradeId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade not found"));
+
+    checkTeachesCourseOrAdmin(entity.getExam().getGroupCourse().getId());
+
+    var history = new api.poja.app.entity.GradeHistory();
+    history.setGrade(entity);
+    history.setOldValue(entity.getValue());
+    history.setNewValue(request.value());
+    history.setChangedAt(LocalDateTime.now());
+    history.setChangedBy(currentUser());
+    history.setReason(request.reason());
+    gradeHistoryRepository.save(history);
+
+    entity.setValue(request.value());
+    entity.setUpdatedAt(LocalDateTime.now());
     return GradeMapper.toModel(gradeRepository.save(entity));
   }
 
