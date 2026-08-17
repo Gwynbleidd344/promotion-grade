@@ -3,9 +3,9 @@ spring:
     name: promotion-grade
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+     url: jdbc:postgresql://ep-lucky-fire-b1304edy-pooler.c-5.eu-central-1.aws.neon.tech/neondb?user=neondb_owner&password=npg_bNEdc4Cny5xj&sslmode=require&channelBinding=require
+     username: neondb_owner
+     password: npg_bNEdc4Cny5xj
 
   jpa:
     open-in-view: false
@@ -16,7 +16,7 @@ spring:
         format_sql: true
 
 jwt:
-  secret: ${JWT_SECRET}          
+  secret: 51aa1507823f9ed786a04bed7be6d80cefa5c6b2cea118e8f52862a5f8e2513c       
   expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 logging:

@@ -24,13 +24,17 @@ public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
   private final CustomUserDetailsService userDetailsService;
+  private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf(csrf -> csrf.disable())
-        .exceptionHandling(
-            handling -> handling.authenticationEntryPoint(jwtAuthenticationEntryPoint))
-        .sessionManagement(
+            .exceptionHandling(
+                    handling ->
+                            handling
+                                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                                    .accessDeniedHandler(jwtAccessDeniedHandler))
+            .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authenticationProvider(authenticationProvider())
         .authorizeHttpRequests(
@@ -44,6 +48,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/v1/academic-years")
                     .hasRole("ADM")
                     .requestMatchers(HttpMethod.POST, "/api/v1/courses")
+                    .hasRole("ADM")
+                    .requestMatchers(HttpMethod.POST, "/api/v1/course-assignments/*/exams")
                     .hasRole("ADM")
                     .requestMatchers(HttpMethod.POST, "/api/v1/groups")
                     .hasRole("ADM")
