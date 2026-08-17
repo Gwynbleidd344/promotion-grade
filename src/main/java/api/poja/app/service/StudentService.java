@@ -37,20 +37,20 @@ public class StudentService {
 
   @Transactional(readOnly = true)
   public List<api.poja.app.model.StudentGroupHistory> getGroupHistory(
-          UUID studentId, UUID academicYearId) {
+      UUID studentId, UUID academicYearId) {
     findStudentOrThrow(studentId);
 
     var entries =
-            academicYearId == null
-                    ? studentGroupHistoryRepository.findByStudentIdOrderByStartDateAsc(studentId)
-                    : studentGroupHistoryRepository.findByStudentIdAndAcademicYearId(
-                    studentId, academicYearId);
+        academicYearId == null
+            ? studentGroupHistoryRepository.findByStudentIdOrderByStartDateAsc(studentId)
+            : studentGroupHistoryRepository.findByStudentIdAndAcademicYearId(
+                studentId, academicYearId);
 
     return entries.stream()
-            .sorted(java.util.Comparator.comparing(
-                    api.poja.app.entity.StudentGroupHistory::getStartDate))
-            .map(StudentGroupHistoryMapper::toModel)
-            .toList();
+        .sorted(
+            java.util.Comparator.comparing(api.poja.app.entity.StudentGroupHistory::getStartDate))
+        .map(StudentGroupHistoryMapper::toModel)
+        .toList();
   }
 
   @Transactional(readOnly = true)

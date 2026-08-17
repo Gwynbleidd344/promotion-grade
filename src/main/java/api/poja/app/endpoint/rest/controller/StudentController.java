@@ -53,8 +53,7 @@ public class StudentController {
 
   @GetMapping("/{id}/group-history")
   public ResponseEntity<List<api.poja.app.model.StudentGroupHistory>> getGroupHistory(
-          @PathVariable UUID id,
-          @RequestParam(required = false) UUID academicYearId) {
+      @PathVariable UUID id, @RequestParam(required = false) UUID academicYearId) {
     return ResponseEntity.ok(studentService.getGroupHistory(id, academicYearId));
   }
 }

@@ -12,11 +12,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StudentGroupHistory {
-    private UUID id;
-    private UUID studentId;
-    private UUID groupId;
-    private UUID academicYearId;
-    private Integer semester;
-    private LocalDate startDate;
-    private LocalDate endDate;
+  private UUID id;
+  private UUID studentId;
+  private UUID groupId;
+  private UUID academicYearId;
+  private Integer semester;
+  private LocalDate startDate;
+  private LocalDate endDate;
 }
