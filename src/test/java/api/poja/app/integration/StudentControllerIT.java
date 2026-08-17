@@ -159,7 +159,7 @@ class StudentControllerIT extends IntegrationTestSupport {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(response.getBody()).hasSize(1);
-    var entry = response.getBody().get(0);
+    var entry = response.getBody().getFirst();
     assertThat(entry.getStudentId()).isEqualTo(student.getId());
     assertThat(entry.getGroupId()).isEqualTo(fixture.group().getId());
     assertThat(entry.getAcademicYearId()).isEqualTo(fixture.academicYear().getId());
