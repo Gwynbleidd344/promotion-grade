@@ -54,6 +54,21 @@ public class GradeService {
     return GradeMapper.toModel(gradeRepository.save(entity));
   }
 
+  @Transactional(readOnly = true)
+  public java.util.List<Grade> listForStudent(UUID studentId, UUID courseId, UUID academicYearId) {
+    var student =
+        studentRepository
+            .findById(studentId)
+            .orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
+
+    checkOwnerOrStaff(student);
+
+    return gradeRepository.findByStudentIdFiltered(studentId, courseId, academicYearId).stream()
+        .map(GradeMapper::toModel)
+        .toList();
+  }
+
   @Transactional
   public Grade update(UUID gradeId, GradeUpdateRequest request) {
     var entity =
@@ -91,6 +106,16 @@ public class GradeService {
     if (!teachesCourse) {
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "The teacher does not teach this course");
+    }
+  }
+
+  private void checkOwnerOrStaff(api.poja.app.entity.Student student) {
+    var user = currentUser();
+    if (user.getRole() == UserRole.ADM || user.getRole() == UserRole.TEC) {
+      return;
+    }
+    if (!student.getUserAccount().getId().equals(user.getId())) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to view these grades");
     }
   }
 
