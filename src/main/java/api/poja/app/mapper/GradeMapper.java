@@ -3,6 +3,7 @@ package api.poja.app.mapper;
 import api.poja.app.entity.Exam;
 import api.poja.app.entity.Student;
 import api.poja.app.model.Grade;
+import api.poja.app.model.GradeHistory;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -33,5 +34,21 @@ public final class GradeMapper {
     entity.setCreatedAt(now);
     entity.setUpdatedAt(now);
     return entity;
+  }
+
+  public static GradeHistory toHistoryModel(api.poja.app.entity.GradeHistory entity) {
+    if (entity == null) {
+      return null;
+    }
+    return GradeHistory.builder()
+        .id(entity.getId())
+        .gradeId(entity.getGrade().getId())
+        .oldValue(entity.getOldValue())
+        .newValue(entity.getNewValue())
+        .changedAt(entity.getChangedAt())
+        .changedByUserAccountId(
+            entity.getChangedBy() != null ? entity.getChangedBy().getId() : null)
+        .reason(entity.getReason())
+        .build();
   }
 }
