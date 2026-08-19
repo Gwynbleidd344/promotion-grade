@@ -2,7 +2,10 @@ package api.poja.app.service;
 
 import api.poja.app.endpoint.event.EventProducer;
 import api.poja.app.endpoint.event.model.TranscriptSendRequested;
+import api.poja.app.entity.Course;
 import api.poja.app.entity.Grade;
+import api.poja.app.entity.GroupCourse;
+import api.poja.app.entity.ProgramCourse;
 import api.poja.app.entity.enums.ReportStatus;
 import api.poja.app.file.bucket.BucketComponent;
 import api.poja.app.mapper.AcademicReportMapper;
@@ -10,6 +13,7 @@ import api.poja.app.model.AcademicReport;
 import api.poja.app.repository.AcademicReportRepository;
 import api.poja.app.repository.AcademicYearRepository;
 import api.poja.app.repository.GradeRepository;
+import api.poja.app.repository.GroupCourseRepository;
 import api.poja.app.repository.ProgramCourseRepository;
 import api.poja.app.repository.StudentRepository;
 import com.lowagie.text.Document;
@@ -21,8 +25,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
@@ -43,6 +49,7 @@ public class AcademicReportService {
   private final StudentRepository studentRepository;
   private final AcademicYearRepository academicYearRepository;
   private final GradeRepository gradeRepository;
+  private final GroupCourseRepository groupCourseRepository;
   private final ProgramCourseRepository programCourseRepository;
   private final BucketComponent bucketComponent;
   private final EventProducer<TranscriptSendRequested> eventProducer;
@@ -60,31 +67,56 @@ public class AcademicReportService {
     var student = findStudentOrThrow(studentId);
     var academicYear = findAcademicYearOrThrow(yearLabel);
 
-    var programCourses = programCourseRepository.findByProgramId(student.getProgram().getId());
+    var groupCoursesForYear =
+        groupCourseRepository.findAll().stream()
+            .filter(
+                gc ->
+                    gc.getAcademicYear() != null
+                        && isSameAcademicYear(gc.getAcademicYear(), academicYear, yearLabel))
+            .toList();
+
+    List<Course> coursesToEvaluate;
+
+    if (!groupCoursesForYear.isEmpty()) {
+      coursesToEvaluate =
+          groupCoursesForYear.stream()
+              .map(GroupCourse::getCourse)
+              .filter(Objects::nonNull)
+              .distinct()
+              .toList();
+    } else if (student.getProgram() != null) {
+      coursesToEvaluate =
+          programCourseRepository.findByProgramId(student.getProgram().getId()).stream()
+              .map(ProgramCourse::getCourse)
+              .filter(Objects::nonNull)
+              .distinct()
+              .toList();
+    } else {
+      coursesToEvaluate = List.of();
+    }
 
     Map<UUID, List<Grade>> gradesByCourse =
         gradeRepository.findByStudentId(studentId).stream()
+            .filter(g -> g.getExam() != null && g.getExam().getGroupCourse() != null)
             .filter(
-                g ->
-                    g.getExam()
-                        .getGroupCourse()
-                        .getAcademicYear()
-                        .getId()
-                        .equals(academicYear.getId()))
+                g -> {
+                  var ay = g.getExam().getGroupCourse().getAcademicYear();
+                  return ay != null && isSameAcademicYear(ay, academicYear, yearLabel);
+                })
             .collect(Collectors.groupingBy(g -> g.getExam().getGroupCourse().getCourse().getId()));
 
     int creditsConsidered = 0;
     int creditsObtained = 0;
     BigDecimal creditWeightedSum = BigDecimal.ZERO;
-    boolean allCoursesGraded = !programCourses.isEmpty();
+    boolean allCoursesGraded = !coursesToEvaluate.isEmpty();
 
-    var reportLines = new java.util.ArrayList<TranscriptLine>();
+    var reportLines = new ArrayList<TranscriptLine>();
 
-    for (var programCourse : programCourses) {
-      var course = programCourse.getCourse();
+    for (var course : coursesToEvaluate) {
       var grades = gradesByCourse.getOrDefault(course.getId(), List.of());
+      var validGrades = grades.stream().filter(g -> g.getValue() != null).toList();
 
-      if (grades.isEmpty()) {
+      if (validGrades.isEmpty()) {
         allCoursesGraded = false;
         reportLines.add(new TranscriptLine(course.getReference(), course.getTitle(), null, false));
         continue;
@@ -92,11 +124,15 @@ public class AcademicReportService {
 
       BigDecimal valueSum = BigDecimal.ZERO;
       BigDecimal coefficientSum = BigDecimal.ZERO;
-      for (var grade : grades) {
-        var coefficient = grade.getExam().getCoefficient();
+      for (var grade : validGrades) {
+        var coefficient =
+            (grade.getExam() != null && grade.getExam().getCoefficient() != null)
+                ? grade.getExam().getCoefficient()
+                : BigDecimal.ONE;
         valueSum = valueSum.add(grade.getValue().multiply(coefficient));
         coefficientSum = coefficientSum.add(coefficient);
       }
+
       var courseAverage =
           coefficientSum.signum() == 0
               ? BigDecimal.ZERO
@@ -118,6 +154,7 @@ public class AcademicReportService {
             ? null
             : creditWeightedSum.divide(
                 BigDecimal.valueOf(creditsConsidered), 2, RoundingMode.HALF_UP);
+
     var status = allCoursesGraded ? ReportStatus.COMPLETE : ReportStatus.PROVISIONAL;
 
     var pdfFile =
@@ -156,8 +193,6 @@ public class AcademicReportService {
     var existing =
         academicReportRepository.findByStudentIdAndAcademicYearId(studentId, academicYear.getId());
 
-    // No report yet, or a stale one without a PDF (shouldn't normally happen, but generate()
-    // is idempotent on the same student/year so it's safe to just re-run it).
     UUID reportId =
         (existing.isEmpty() || existing.get().getPdfS3Key() == null)
             ? generate(studentId, yearLabel).getId()
@@ -165,6 +200,21 @@ public class AcademicReportService {
 
     eventProducer.accept(
         List.of(TranscriptSendRequested.builder().academicReportId(reportId).build()));
+  }
+
+  private boolean isSameAcademicYear(
+      api.poja.app.entity.AcademicYear targetYear,
+      api.poja.app.entity.AcademicYear expectedYear,
+      String yearLabel) {
+    if (targetYear == null) return false;
+    if (expectedYear != null
+        && targetYear.getId() != null
+        && targetYear.getId().equals(expectedYear.getId())) {
+      return true;
+    }
+    return targetYear.getLabel() != null
+        && yearLabel != null
+        && targetYear.getLabel().trim().equalsIgnoreCase(yearLabel.trim());
   }
 
   private AcademicReport toModelWithDownloadUrl(api.poja.app.entity.AcademicReport entity) {
@@ -237,7 +287,6 @@ public class AcademicReportService {
           new Paragraph(
               "Moyenne générale : " + (generalAverage == null ? "-" : generalAverage + "/20")));
       document.add(new Paragraph("Crédits obtenus : " + creditsObtained));
-    } finally {
       document.close();
     }
     return file;
