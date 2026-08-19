@@ -26,6 +26,7 @@ import api.poja.app.repository.StudentRepository;
 import api.poja.app.repository.UserAccountRepository;
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -40,6 +41,7 @@ public abstract class IntegrationTestSupport extends FacadeIT {
 
   protected static final String API = "/api/v1";
   protected static final String DEFAULT_PASSWORD = "Password123!";
+  private static final AtomicInteger YEAR_COUNTER = new AtomicInteger(2000);
 
   @Autowired protected TestRestTemplate restTemplate;
   @Autowired protected UserAccountRepository userAccountRepository;
@@ -53,6 +55,10 @@ public abstract class IntegrationTestSupport extends FacadeIT {
 
   protected String uniqueUsername(String prefix) {
     return prefix + "-" + UUID.randomUUID().toString().substring(0, 8);
+  }
+
+  protected int nextYear() {
+    return YEAR_COUNTER.incrementAndGet();
   }
 
   protected HttpHeaders authHeaders(String token) {
@@ -121,7 +127,7 @@ public abstract class IntegrationTestSupport extends FacadeIT {
   }
 
   protected AcademicYear createAcademicYear(String adminToken, String label) {
-    var year = LocalDate.now().getYear() + (int) (Math.random() * 1000);
+    int year = nextYear();
     var request =
         new AcademicYearCreateRequest(
             label, LocalDate.of(year, 9, 1), LocalDate.of(year + 1, 6, 30));
@@ -135,7 +141,7 @@ public abstract class IntegrationTestSupport extends FacadeIT {
   }
 
   protected Promotion createPromotion(String adminToken) {
-    int gradYear = 2000 + (int) (Math.random() * 100000);
+    int gradYear = nextYear();
     var request = new PromotionCreateRequest("Promotion " + gradYear, gradYear);
     var response = post(API + "/promotions", adminToken, request, Promotion.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
