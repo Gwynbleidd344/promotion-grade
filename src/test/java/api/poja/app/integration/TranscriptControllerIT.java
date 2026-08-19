@@ -47,7 +47,6 @@ class TranscriptControllerIT extends IntegrationTestSupport {
   @Autowired private ProgramRepository programRepository;
   @Autowired private ProgramCourseRepository programCourseRepository;
 
-  // The real components talk to AWS (S3, EventBridge); stub them out so tests stay hermetic.
   @MockBean private BucketComponent bucketComponent;
   @MockBean private EventProducer<TranscriptSendRequested> eventProducer;
 
@@ -219,7 +218,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
   void non_admin_cannot_generate_transcript() {
     var admin = bootstrapAdminToken();
     var fixture = setUpStudent(admin, false);
-    var teacherUser = register("teacher-" + UUID.randomUUID());
+    var teacherUser = register("teacher-gen-" + UUID.randomUUID());
     promoteToTeacher(admin, teacherUser.getId());
     var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
@@ -335,7 +334,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
   void non_admin_cannot_send_transcript() {
     var admin = bootstrapAdminToken();
     var fixture = setUpStudent(admin, true);
-    var teacherUser = register("teacher-" + UUID.randomUUID());
+    var teacherUser = register("teacher-send-" + UUID.randomUUID());
     promoteToTeacher(admin, teacherUser.getId());
     var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
