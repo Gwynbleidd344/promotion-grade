@@ -62,7 +62,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
 
   private StudentFixture setUpStudent(String adminToken, boolean graded) {
     var base = createLinkedPromotionAndGroup(adminToken);
-    var user = register("transcriptstudent");
+    var user = register("student-" + UUID.randomUUID());
     var student =
         promoteToStudent(
             adminToken, user.getId(), base.promotion(), base.group(), base.academicYear());
@@ -219,7 +219,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
   void non_admin_cannot_generate_transcript() {
     var admin = bootstrapAdminToken();
     var fixture = setUpStudent(admin, false);
-    var teacherUser = register("nonadmintranscript");
+    var teacherUser = register("teacher-" + UUID.randomUUID());
     promoteToTeacher(admin, teacherUser.getId());
     var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
@@ -335,7 +335,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
   void non_admin_cannot_send_transcript() {
     var admin = bootstrapAdminToken();
     var fixture = setUpStudent(admin, true);
-    var teacherUser = register("nonadminsend");
+    var teacherUser = register("teacher-" + UUID.randomUUID());
     promoteToTeacher(admin, teacherUser.getId());
     var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
