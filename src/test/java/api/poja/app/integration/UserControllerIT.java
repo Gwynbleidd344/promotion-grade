@@ -57,14 +57,12 @@ class UserControllerIT extends IntegrationTestSupport {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
-  //  @Test
-  //  void non_admin_cannot_list_users() {
-  //    var user = registerAndLogin("cannotlist");
-  //
-  //    var response = get(API + "/users", user.token(), ErrorResponse.class);
-  //
-  //    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-  //  }
+  @Test
+  void non_admin_cannot_list_users() {
+    var user = registerAndLogin("cannotlist");
+    var response = get(API + "/users", user.token(), ErrorResponse.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
 
   @Test
   void promote_to_student_succeeds_and_creates_student_number() {
