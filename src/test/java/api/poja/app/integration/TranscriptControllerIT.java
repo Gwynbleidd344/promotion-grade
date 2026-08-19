@@ -255,7 +255,7 @@ class TranscriptControllerIT extends IntegrationTestSupport {
     var reports = listTranscripts(admin, fixture.studentId());
 
     assertThat(reports).hasSize(1);
-    assertThat(reports.get(0).getStatus()).isEqualTo(ReportStatus.COMPLETE);
+    assertThat(reports.getFirst().getStatus()).isEqualTo(ReportStatus.COMPLETE);
   }
 
   @Test
