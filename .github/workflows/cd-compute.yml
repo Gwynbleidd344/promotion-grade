@@ -109,7 +109,7 @@ jobs:
           curl -X GET -o template.yml "$(echo $response | jq -r '.build_template_file_uri')"
 
       - name: Build project
-        run: sam build --debug
+        run: sam build
 
       - name: Prepare Poja deployment
         run: |

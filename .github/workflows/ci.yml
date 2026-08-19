@@ -55,17 +55,13 @@ jobs:
           distribution: 'corretto'
       - run: chmod +x gradlew
       - run: chmod +x .shell/publish_gen_to_maven_local.sh
-
-      - name: Run tests
-        run: |
+      - run: |
           ./gradlew test \
-            --info \
-            --stacktrace \
-            --console=plain \
             -Dspring.datasource.url="$SPRING_DATASOURCE_URL" \
             -Dspring.datasource.username="$SPRING_DATASOURCE_USERNAME" \
             -Dspring.datasource.password="$SPRING_DATASOURCE_PASSWORD" \
             -Djwt.secret="$JWT_SECRET"
+
       
 
   format:
