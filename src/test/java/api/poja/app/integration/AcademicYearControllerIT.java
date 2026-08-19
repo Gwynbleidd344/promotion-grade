@@ -21,15 +21,11 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
     String labelA = "SORT-A-" + uniqueUsername("y");
     String labelB = "SORT-B-" + uniqueUsername("y");
 
-    var later = createAcademicYear(admin, labelB);
-    var earlier =
-        post(
-                API + "/academic-years",
-                admin,
-                new AcademicYearCreateRequest(
-                    labelA, LocalDate.of(1999, 9, 1), LocalDate.of(2000, 6, 30)),
-                AcademicYear.class)
-            .getBody();
+    int yearA = nextYear();
+    int yearB = nextYear();
+
+    var later = createAcademicYear(admin, labelB, yearB);
+    var earlier = createAcademicYear(admin, labelA, yearA);
 
     var response =
         restTemplate.exchange(
@@ -47,14 +43,17 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
   @Test
   void create_rejects_duplicate_label() {
     var admin = bootstrapAdminToken();
-    var year = createAcademicYear(admin);
+    int year = nextYear();
+    String label = "DUP-LABEL-" + year;
+
+    createAcademicYear(admin, label, year);
 
     var response =
         post(
             API + "/academic-years",
             admin,
             new AcademicYearCreateRequest(
-                year.getLabel(), LocalDate.of(2040, 9, 1), LocalDate.of(2041, 6, 30)),
+                label, LocalDate.of(year + 10, 9, 1), LocalDate.of(year + 11, 6, 30)),
             ErrorResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -64,6 +63,7 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
   @Test
   void create_rejects_end_date_before_start_date() {
     var admin = bootstrapAdminToken();
+    int year = nextYear();
 
     var response =
         post(
@@ -71,8 +71,8 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
             admin,
             new AcademicYearCreateRequest(
                 "BADRANGE-" + uniqueUsername("y"),
-                LocalDate.of(2100, 6, 30),
-                LocalDate.of(2099, 9, 1)),
+                LocalDate.of(year, 6, 30),
+                LocalDate.of(year - 1, 9, 1)),
             ErrorResponse.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -82,13 +82,10 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
   @Test
   void create_rejects_overlapping_date_range() {
     var admin = bootstrapAdminToken();
-    int year = 2200 + (int) (Math.random() * 1000);
-    post(
-        API + "/academic-years",
-        admin,
-        new AcademicYearCreateRequest(
-            "BASE-" + year, LocalDate.of(year, 9, 1), LocalDate.of(year + 1, 6, 30)),
-        AcademicYear.class);
+    int year = nextYear();
+    String baseLabel = "BASE-" + year;
+
+    createAcademicYear(admin, baseLabel, year);
 
     var response =
         post(
@@ -123,5 +120,14 @@ class AcademicYearControllerIT extends IntegrationTestSupport {
     var response = get(API + "/academic-years", user.token(), String.class);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+  }
+
+  private AcademicYear createAcademicYear(String adminToken, String label, int year) {
+    var request =
+        new AcademicYearCreateRequest(
+            label, LocalDate.of(year, 9, 1), LocalDate.of(year + 1, 6, 30));
+    var response = post(API + "/academic-years", adminToken, request, AcademicYear.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    return response.getBody();
   }
 }
