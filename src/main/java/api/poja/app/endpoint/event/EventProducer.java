@@ -35,7 +35,7 @@ public class EventProducer<T extends PojaEvent> implements Consumer<Collection<T
   public EventProducer(
       ObjectMapper om,
       EventBridgeClient eventBridgeClient,
-      @Value("${aws.eventBridge.bus:default}") String eventBusName,
+      @Value("${aws.eventBridge.bus}") String eventBusName,
       ListGrouper<T> listGrouper) {
     this.om = om;
     this.eventBridgeClient = eventBridgeClient;
