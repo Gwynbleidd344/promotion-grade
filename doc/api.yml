@@ -1,4 +1,5 @@
 openapi: 3.0.3
+
 info:
   title: HEI Academic Management API
   description: >
@@ -8,6 +9,7 @@ info:
     history, course assignments, exams, grades (with history), transcripts,
     and graduation lists.
   version: 1.0.0
+
 servers:
   - url: http://localhost:8080/api/v1
 
@@ -31,6 +33,7 @@ security:
   - bearerAuth: []
 
 paths:
+
   /auth/login:
     post:
       tags: [Auth]
@@ -393,7 +396,7 @@ paths:
         - $ref: "#/components/parameters/Size"
       responses:
         "200":
-          description: List of courses
+          description: List courses
           content:
             application/json:
               schema:
@@ -402,6 +405,7 @@ paths:
                   $ref: "#/components/schemas/Course"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
     post:
       tags: [Courses]
       summary: Create a course
@@ -443,6 +447,7 @@ paths:
                   $ref: "#/components/schemas/StudentGroup"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
     post:
       tags: [Groups]
       summary: Create a group
@@ -484,6 +489,7 @@ paths:
                   $ref: "#/components/schemas/Promotion"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
     post:
       tags: [Promotions]
       summary: Create a promotion
@@ -553,15 +559,16 @@ paths:
                   $ref: "#/components/schemas/AcademicYear"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
     post:
       tags: [Academic Years]
       summary: Create an academic year
       description: >
         Defines a school year (e.g. "2025-2026") used throughout the app as
-        academicYearId: course assignments, student group history, academic
-        reports/transcripts, exams. endDate must be strictly after startDate,
-        the label must be unique, and the date range must not overlap an
-        existing academic year.
+        academicYearId: course assignments, student group history,
+        academic reports/transcripts, exams. endDate must be strictly after
+        startDate, the label must be unique, and the date range must not
+        overlap an existing academic year.
       requestBody:
         required: true
         content:
@@ -602,6 +609,7 @@ paths:
                   $ref: "#/components/schemas/CourseAssignment"
         "401":
           $ref: "#/components/responses/Unauthorized"
+
     post:
       tags: [Course Assignments]
       summary: Assign a course to a group for a given year/semester
@@ -692,6 +700,7 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
     get:
       tags: [Exams]
       summary: List the exams of a course assignment
@@ -859,10 +868,10 @@ paths:
       summary: Generate a student's transcript for an academic year
       description: >
         Computes the general average and credits obtained from the
-        available grades, only considers courses belonging to the
-        student's program, generates a PDF stored on S3, and marks the
-        transcript as provisional or complete depending on whether all
-        grades are available.
+        available grades, only considers courses belonging to the student's
+        program, generates the transcript PDF, and makes it available for
+        subsequent retrieval. The transcript is marked as provisional or
+        complete depending on whether all grades are available.
       parameters:
         - $ref: "#/components/parameters/StudentId"
         - $ref: "#/components/parameters/AcademicYearPathParam"
@@ -884,7 +893,9 @@ paths:
     post:
       tags: [Transcripts]
       summary: Email the transcript to the student
-      description: (Potentially asynchronous) sending of the S3-stored PDF by email.
+      description: >
+        Sends the generated transcript PDF to the student's email address.
+        The underlying file storage mechanism is not exposed by the API.
       parameters:
         - $ref: "#/components/parameters/StudentId"
         - $ref: "#/components/parameters/AcademicYearPathParam"
@@ -908,8 +919,8 @@ paths:
       summary: View a student's graduation status
       description: >
         Graduated if the average is >= 10/20 in every course of their
-        program across the 3 years, accounting for group changes and grade
-        revisions.
+        program across the 3 years, accounting for group changes and
+        grade revisions.
       parameters:
         - $ref: "#/components/parameters/StudentId"
       responses:
@@ -930,7 +941,9 @@ paths:
     get:
       tags: [Graduation]
       summary: List a promotion's graduates
-      description: List sorted by rank, containing rank, student number, last name, first name, and general average.
+      description: >
+        List sorted by rank, containing rank, student number, last name,
+        first name, and general average.
       parameters:
         - $ref: "#/components/parameters/PromotionIdPath"
         - $ref: "#/components/parameters/ProgramCode"
@@ -955,8 +968,8 @@ paths:
       tags: [Graduation]
       summary: Generate and retrieve the graduates list as XLSX
       description: >
-        Generates the graduates list XLSX file, stores it on S3, and
-        returns a download URL (not emailed).
+        Generates the graduates list XLSX file and returns a download URL.
+        The underlying file storage mechanism is not exposed by the API.
       parameters:
         - $ref: "#/components/parameters/PromotionIdPath"
       responses:
@@ -974,6 +987,7 @@ paths:
           $ref: "#/components/responses/NotFound"
 
 components:
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -981,6 +995,7 @@ components:
       bearerFormat: JWT
 
   parameters:
+
     UserId:
       name: id
       in: path
@@ -989,12 +1004,14 @@ components:
       schema:
         type: string
         format: uuid
+
     RoleFilter:
       name: role
       in: query
       required: false
       schema:
         $ref: "#/components/schemas/UserRole"
+
     StudentId:
       name: id
       in: path
@@ -1003,6 +1020,7 @@ components:
       schema:
         type: string
         format: uuid
+
     TeacherId:
       name: teacherId
       in: path
@@ -1011,6 +1029,7 @@ components:
       schema:
         type: string
         format: uuid
+
     CourseId:
       name: courseId
       in: query
@@ -1018,6 +1037,7 @@ components:
       schema:
         type: string
         format: uuid
+
     GroupId:
       name: groupId
       in: query
@@ -1025,6 +1045,7 @@ components:
       schema:
         type: string
         format: uuid
+
     GroupIdPath:
       name: groupId
       in: path
@@ -1033,6 +1054,7 @@ components:
       schema:
         type: string
         format: uuid
+
     AcademicYearId:
       name: academicYearId
       in: query
@@ -1040,6 +1062,7 @@ components:
       schema:
         type: string
         format: uuid
+
     AcademicYearPathParam:
       name: year
       in: path
@@ -1047,6 +1070,7 @@ components:
       description: Academic year label, e.g. "2025-2026"
       schema:
         type: string
+
     Semester:
       name: semester
       in: query
@@ -1054,6 +1078,7 @@ components:
       schema:
         type: integer
         enum: [1, 2]
+
     PromotionId:
       name: promotionId
       in: query
@@ -1061,6 +1086,7 @@ components:
       schema:
         type: string
         format: uuid
+
     PromotionIdPath:
       name: id
       in: path
@@ -1069,12 +1095,14 @@ components:
       schema:
         type: string
         format: uuid
+
     ProgramCode:
       name: programCode
       in: query
       required: false
       schema:
         $ref: "#/components/schemas/ProgramCode"
+
     CourseAssignmentId:
       name: id
       in: path
@@ -1083,6 +1111,7 @@ components:
       schema:
         type: string
         format: uuid
+
     ExamId:
       name: id
       in: path
@@ -1091,6 +1120,7 @@ components:
       schema:
         type: string
         format: uuid
+
     GradeId:
       name: id
       in: path
@@ -1099,6 +1129,7 @@ components:
       schema:
         type: string
         format: uuid
+
     Page:
       name: page
       in: query
@@ -1107,6 +1138,7 @@ components:
         type: integer
         minimum: 0
         default: 0
+
     Size:
       name: size
       in: query
@@ -1117,24 +1149,28 @@ components:
         default: 20
 
   responses:
+
     BadRequest:
       description: Invalid request
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+
     Unauthorized:
       description: Authentication required or invalid
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+
     Forbidden:
       description: Insufficient rights for this operation
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+
     NotFound:
       description: Resource not found
       content:
@@ -1143,6 +1179,7 @@ components:
             $ref: "#/components/schemas/Error"
 
   schemas:
+
     Error:
       type: object
       properties:
@@ -1168,7 +1205,9 @@ components:
 
     LoginRequest:
       type: object
-      required: [username, password]
+      required:
+        - username
+        - password
       properties:
         username:
           type: string
@@ -1192,7 +1231,10 @@ components:
 
     RegisterRequest:
       type: object
-      required: [username, email, password]
+      required:
+        - username
+        - email
+        - password
       properties:
         username:
           type: string
@@ -1226,7 +1268,14 @@ components:
     PromoteStudentRequest:
       type: object
       required:
-        [firstName, lastName, program, promotionId, groupId, academicYearId, semester, startDate]
+        - firstName
+        - lastName
+        - program
+        - promotionId
+        - groupId
+        - academicYearId
+        - semester
+        - startDate
       properties:
         firstName:
           type: string
@@ -1252,7 +1301,9 @@ components:
 
     PromoteTeacherRequest:
       type: object
-      required: [firstName, lastName]
+      required:
+        - firstName
+        - lastName
       properties:
         firstName:
           type: string
@@ -1261,7 +1312,9 @@ components:
 
     PromoteAdminRequest:
       type: object
-      required: [firstName, lastName]
+      required:
+        - firstName
+        - lastName
       properties:
         firstName:
           type: string
@@ -1270,7 +1323,12 @@ components:
 
     StudentPromotionAndGroupChangeRequest:
       type: object
-      required: [promotionId, groupId, academicYearId, semester, startDate]
+      required:
+        - promotionId
+        - groupId
+        - academicYearId
+        - semester
+        - startDate
       properties:
         promotionId:
           type: string
@@ -1290,7 +1348,11 @@ components:
 
     StudentGroupChangeRequest:
       type: object
-      required: [groupId, academicYearId, semester, startDate]
+      required:
+        - groupId
+        - academicYearId
+        - semester
+        - startDate
       properties:
         groupId:
           type: string
@@ -1359,7 +1421,10 @@ components:
 
     CourseCreateRequest:
       type: object
-      required: [reference, title, credits]
+      required:
+        - reference
+        - title
+        - credits
       properties:
         reference:
           type: string
@@ -1383,7 +1448,8 @@ components:
 
     StudentGroupCreateRequest:
       type: object
-      required: [reference]
+      required:
+        - reference
       properties:
         reference:
           type: string
@@ -1403,7 +1469,9 @@ components:
 
     PromotionCreateRequest:
       type: object
-      required: [name, graduationYear]
+      required:
+        - name
+        - graduationYear
       properties:
         name:
           type: string
@@ -1428,7 +1496,10 @@ components:
 
     AcademicYearCreateRequest:
       type: object
-      required: [label, startDate, endDate]
+      required:
+        - label
+        - startDate
+        - endDate
       properties:
         label:
           type: string
@@ -1492,7 +1563,11 @@ components:
 
     CourseAssignmentCreateRequest:
       type: object
-      required: [groupId, courseId, academicYearId, semester]
+      required:
+        - groupId
+        - courseId
+        - academicYearId
+        - semester
       properties:
         groupId:
           type: string
@@ -1548,7 +1623,9 @@ components:
 
     ExamCreateRequest:
       type: object
-      required: [name, coefficient]
+      required:
+        - name
+        - coefficient
       properties:
         name:
           type: string
@@ -1590,7 +1667,9 @@ components:
 
     GradeCreateRequest:
       type: object
-      required: [studentId, value]
+      required:
+        - studentId
+        - value
       properties:
         studentId:
           type: string
@@ -1603,7 +1682,8 @@ components:
 
     GradeUpdateRequest:
       type: object
-      required: [value]
+      required:
+        - value
       properties:
         value:
           type: number
@@ -1655,9 +1735,6 @@ components:
           format: uuid
         status:
           $ref: "#/components/schemas/ReportStatus"
-        pdfS3Key:
-          type: string
-          nullable: true
         generatedAt:
           type: string
           format: date-time
@@ -1689,7 +1766,8 @@ components:
           type: integer
         failedCourses:
           type: array
-          description: Courses in the student's program with an average < 10/20, if any
+          description: >
+            Courses in the student's program with an average < 10/20, if any
           items:
             type: object
             properties:
@@ -1723,8 +1801,6 @@ components:
         promotionId:
           type: string
           format: uuid
-        s3Key:
-          type: string
         downloadUrl:
           type: string
           format: uri
