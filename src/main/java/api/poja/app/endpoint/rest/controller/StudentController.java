@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,17 +39,21 @@ public class StudentController {
     return ResponseEntity.ok(studentService.getById(id));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PatchMapping("/{id}/promotion-and-group")
   public ResponseEntity<Student> changePromotionAndGroup(
       @PathVariable UUID id, @Valid @RequestBody StudentPromotionAndGroupChangeRequest request) {
     return ResponseEntity.ok(studentService.changePromotionAndGroup(id, request));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PatchMapping("/{id}/group")
   public ResponseEntity<Student> changeGroup(
       @PathVariable UUID id, @Valid @RequestBody StudentGroupChangeRequest request) {
     return ResponseEntity.ok(studentService.changeGroup(id, request));
+  }
+
+  @GetMapping("/{id}/group-history")
+  public ResponseEntity<List<api.poja.app.model.StudentGroupHistory>> getGroupHistory(
+      @PathVariable UUID id, @RequestParam(required = false) UUID academicYearId) {
+    return ResponseEntity.ok(studentService.getGroupHistory(id, academicYearId));
   }
 }

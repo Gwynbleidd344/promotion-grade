@@ -3,6 +3,7 @@ package api.poja.app.security;
 import api.poja.app.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -24,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private static final String AUTH_HEADER = "Authorization";
   private static final String BEARER_PREFIX = "Bearer ";
+  private static final String COOKIE_TOKEN_NAME = "token";
 
   private final JwtService jwtService;
   private final UserDetailsService userDetailsService;
@@ -35,33 +37,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       @NonNull FilterChain filterChain)
       throws ServletException, IOException {
 
-    String authHeader = request.getHeader(AUTH_HEADER);
-    if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-      filterChain.doFilter(request, response);
-      return;
-    }
+    String token = extractToken(request);
 
-    String token = authHeader.substring(BEARER_PREFIX.length());
+    if (token != null) {
+      try {
+        String username = jwtService.extractUsername(token);
 
-    try {
-      String username = jwtService.extractUsername(token);
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+          UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-      if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-        if (jwtService.isTokenValid(token, userDetails.getUsername())) {
-          var authToken =
-              new UsernamePasswordAuthenticationToken(
-                  userDetails, null, userDetails.getAuthorities());
-          authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-          SecurityContextHolder.getContext().setAuthentication(authToken);
+          if (jwtService.isTokenValid(token, userDetails.getUsername())) {
+            var authToken =
+                new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
+          }
         }
+      } catch (Exception e) {
+        log.debug("Could not authenticate request via JWT: {}", e.getMessage());
+        SecurityContextHolder.clearContext();
       }
-    } catch (Exception e) {
-      log.debug("Could not authenticate request via JWT: {}", e.getMessage());
-      SecurityContextHolder.clearContext();
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  private String extractToken(HttpServletRequest request) {
+    String authHeader = request.getHeader(AUTH_HEADER);
+    if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
+      return authHeader.substring(BEARER_PREFIX.length());
+    }
+
+    if (request.getCookies() != null) {
+      for (Cookie cookie : request.getCookies()) {
+        if (COOKIE_TOKEN_NAME.equals(cookie.getName())) {
+          return cookie.getValue();
+        }
+      }
+    }
+
+    return null;
   }
 }

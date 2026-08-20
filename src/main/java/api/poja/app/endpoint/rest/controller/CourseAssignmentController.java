@@ -11,7 +11,6 @@ import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,14 +37,12 @@ public class CourseAssignmentController {
         courseAssignmentService.list(groupId, courseId, academicYearId, semester));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping
   public ResponseEntity<CourseAssignment> createCourseAssignment(
       @Valid @RequestBody CourseAssignmentCreateRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
   }
 
-  @PreAuthorize("hasRole('ADM')")
   @PostMapping("/{id}/teachers/{teacherId}")
   public ResponseEntity<CourseTeacher> assignTeacher(
       @PathVariable UUID id, @PathVariable UUID teacherId) {

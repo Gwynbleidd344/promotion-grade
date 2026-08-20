@@ -1,0 +1,357 @@
+package api.poja.app.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import api.poja.app.endpoint.rest.dto.ErrorResponse;
+import api.poja.app.endpoint.rest.dto.ExamCreateRequest;
+import api.poja.app.endpoint.rest.dto.GradeCreateRequest;
+import api.poja.app.endpoint.rest.dto.GradeUpdateRequest;
+import api.poja.app.model.CourseTeacher;
+import api.poja.app.model.Exam;
+import api.poja.app.model.Grade;
+import api.poja.app.model.GradeHistory;
+import api.poja.app.repository.TeacherRepository;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+class GradeControllerIT extends IntegrationTestSupport {
+
+  @Autowired private TeacherRepository teacherRepository;
+
+  private record GradeFixture(
+      UUID courseAssignmentId,
+      UUID examId,
+      UUID courseId,
+      UUID academicYearId,
+      String teacherToken,
+      String studentToken,
+      UUID studentId) {}
+
+  private GradeFixture setUpGradeFixture(String admin) {
+    var promoGroup = createLinkedPromotionAndGroup(admin);
+    var course = createCourse(admin);
+    var assignment =
+        createCourseAssignment(
+            admin,
+            promoGroup.group().getId(),
+            course.getId(),
+            promoGroup.academicYear().getId(),
+            1);
+
+    var exam =
+        post(
+                API + "/course-assignments/" + assignment.getId() + "/exams",
+                admin,
+                new ExamCreateRequest(
+                    "CC", LocalDate.now(), LocalTime.of(8, 0), new BigDecimal("1.0")),
+                Exam.class)
+            .getBody();
+
+    var teacherUser = register("gradeteacher");
+    var teacherAccount = promoteToTeacher(admin, teacherUser.getId());
+    var teacher = teacherRepository.findByUserAccountId(teacherAccount.getId()).orElseThrow();
+    post(
+        API + "/course-assignments/" + assignment.getId() + "/teachers/" + teacher.getId(),
+        admin,
+        null,
+        CourseTeacher.class);
+    var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
+
+    var studentUser = register("gradestudent");
+    var student =
+        promoteToStudent(
+            admin,
+            studentUser.getId(),
+            promoGroup.promotion(),
+            promoGroup.group(),
+            promoGroup.academicYear());
+    var studentToken = login(studentUser.getUsername(), DEFAULT_PASSWORD);
+
+    return new GradeFixture(
+        assignment.getId(),
+        exam.getId(),
+        course.getId(),
+        promoGroup.academicYear().getId(),
+        teacherToken,
+        studentToken,
+        student.getId());
+  }
+
+  // ---- POST /exams/{id}/grades ----
+
+  @Test
+  void teacher_enters_grade_for_own_course_succeeds() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+
+    var response =
+        post(
+            API + "/exams/" + fixture.examId() + "/grades",
+            fixture.teacherToken(),
+            new GradeCreateRequest(fixture.studentId(), new BigDecimal("15.5")),
+            Grade.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    assertThat(response.getBody().getStudentId()).isEqualTo(fixture.studentId());
+    assertThat(response.getBody().getExamId()).isEqualTo(fixture.examId());
+    assertThat(response.getBody().getValue()).isEqualByComparingTo("15.5");
+  }
+
+  @Test
+  void entering_duplicate_grade_conflicts() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    post(
+        API + "/exams/" + fixture.examId() + "/grades",
+        fixture.teacherToken(),
+        new GradeCreateRequest(fixture.studentId(), new BigDecimal("10")),
+        Grade.class);
+
+    var response =
+        post(
+            API + "/exams/" + fixture.examId() + "/grades",
+            fixture.teacherToken(),
+            new GradeCreateRequest(fixture.studentId(), new BigDecimal("12")),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+  }
+
+  @Test
+  void teacher_not_assigned_to_course_cannot_enter_grade() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var outsiderTeacherUser = register("outsiderteacher");
+    promoteToTeacher(admin, outsiderTeacherUser.getId());
+    var outsiderToken = login(outsiderTeacherUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        post(
+            API + "/exams/" + fixture.examId() + "/grades",
+            outsiderToken,
+            new GradeCreateRequest(fixture.studentId(), new BigDecimal("10")),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void entering_grade_for_unknown_exam_returns_not_found() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+
+    var response =
+        post(
+            API + "/exams/" + UUID.randomUUID() + "/grades",
+            fixture.teacherToken(),
+            new GradeCreateRequest(fixture.studentId(), new BigDecimal("10")),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void entering_grade_for_unknown_student_returns_not_found() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+
+    var response =
+        post(
+            API + "/exams/" + fixture.examId() + "/grades",
+            fixture.teacherToken(),
+            new GradeCreateRequest(UUID.randomUUID(), new BigDecimal("10")),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  private <T> ResponseEntity<T> put(String path, String token, Object body, Class<T> responseType) {
+    return restTemplate.exchange(
+        path, HttpMethod.PUT, new HttpEntity<>(body, authHeaders(token)), responseType);
+  }
+
+  @Test
+  void teacher_updates_grade_value() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+
+    var response =
+        put(
+            API + "/grades/" + grade.getId(),
+            fixture.teacherToken(),
+            new GradeUpdateRequest(new BigDecimal("13"), "Erreur de saisie"),
+            Grade.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getValue()).isEqualByComparingTo("13");
+  }
+
+  @Test
+  void update_by_non_teaching_teacher_is_forbidden() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    var outsiderTeacherUser = register("outsiderupdater");
+    promoteToTeacher(admin, outsiderTeacherUser.getId());
+    var outsiderToken = login(outsiderTeacherUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        put(
+            API + "/grades/" + grade.getId(),
+            outsiderToken,
+            new GradeUpdateRequest(new BigDecimal("13"), null),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void update_unknown_grade_returns_not_found() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+
+    var response =
+        put(
+            API + "/grades/" + UUID.randomUUID(),
+            fixture.teacherToken(),
+            new GradeUpdateRequest(new BigDecimal("13"), null),
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void another_student_cannot_view_someone_elses_grades() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    post(
+        API + "/exams/" + fixture.examId() + "/grades",
+        fixture.teacherToken(),
+        new GradeCreateRequest(fixture.studentId(), new BigDecimal("14")),
+        Grade.class);
+
+    var otherFixture = createLinkedPromotionAndGroup(admin);
+    var otherStudentUser = register("otherstudent");
+    promoteToStudent(
+        admin,
+        otherStudentUser.getId(),
+        otherFixture.promotion(),
+        otherFixture.group(),
+        otherFixture.academicYear());
+    var otherStudentToken = login(otherStudentUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        get(API + "/students/" + fixture.studentId() + "/grades", otherStudentToken, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void teacher_views_grade_history_after_update() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    put(
+        API + "/grades/" + grade.getId(),
+        fixture.teacherToken(),
+        new GradeUpdateRequest(new BigDecimal("13"), "Erreur de saisie"),
+        Grade.class);
+
+    var response =
+        restTemplate.exchange(
+            API + "/grades/" + grade.getId() + "/history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(fixture.teacherToken())),
+            new ParameterizedTypeReference<List<GradeHistory>>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).hasSize(1);
+    assertThat(response.getBody().get(0).getOldValue()).isEqualByComparingTo("8");
+    assertThat(response.getBody().get(0).getNewValue()).isEqualByComparingTo("13");
+    assertThat(response.getBody().get(0).getReason()).isEqualTo("Erreur de saisie");
+  }
+
+  @Test
+  void student_can_view_own_grade_history() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    put(
+        API + "/grades/" + grade.getId(),
+        fixture.teacherToken(),
+        new GradeUpdateRequest(new BigDecimal("13"), null),
+        Grade.class);
+
+    var response =
+        restTemplate.exchange(
+            API + "/grades/" + grade.getId() + "/history",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(fixture.studentToken())),
+            new ParameterizedTypeReference<List<GradeHistory>>() {});
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).hasSize(1);
+  }
+
+  @Test
+  void another_student_cannot_view_grade_history() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGradeFixture(admin);
+    var grade =
+        post(
+                API + "/exams/" + fixture.examId() + "/grades",
+                fixture.teacherToken(),
+                new GradeCreateRequest(fixture.studentId(), new BigDecimal("8")),
+                Grade.class)
+            .getBody();
+    var otherFixture = createLinkedPromotionAndGroup(admin);
+    var otherStudentUser = register("otherhistorystudent");
+    promoteToStudent(
+        admin,
+        otherStudentUser.getId(),
+        otherFixture.promotion(),
+        otherFixture.group(),
+        otherFixture.academicYear());
+    var otherStudentToken = login(otherStudentUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        get(API + "/grades/" + grade.getId() + "/history", otherStudentToken, String.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+}

@@ -49,6 +49,81 @@ Content-Type: {{contentType}}
 
 
 ### ============================================================
+### ANNÉES ACADÉMIQUES (admin only)
+### ============================================================
+### Doivent être créées avant tout ce qui référence academicYearId plus bas
+### (promotion d'un étudiant, changement de groupe, affectation de cours,
+### examens, relevés de notes...).
+
+### Créer l'année académique 1 (utilisée pour l'entrée en formation)
+# @name createAcademicYear1
+POST {{baseUrl}}/academic-years
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "label": "2025-2026",
+  "startDate": "2025-09-01",
+  "endDate": "2026-06-30"
+}
+
+### -> id réutilisé pour la promotion initiale de l'étudiant
+@academicYear1Id = {{createAcademicYear1.response.body.$.id}}
+
+### Créer l'année académique 2 (utilisée pour les changements de groupe / affectations)
+# @name createAcademicYear2
+POST {{baseUrl}}/academic-years
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "label": "2026-2027",
+  "startDate": "2026-09-01",
+  "endDate": "2027-06-30"
+}
+
+### -> id réutilisé pour le reste du fichier (redoublement, cours, examens...)
+@academicYear2Id = {{createAcademicYear2.response.body.$.id}}
+
+### Lister les années académiques
+GET {{baseUrl}}/academic-years?page=0&size=20
+Authorization: Bearer {{adminToken}}
+
+### Recréer la même année (doit échouer : label déjà utilisé)
+POST {{baseUrl}}/academic-years
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "label": "2025-2026",
+  "startDate": "2025-09-01",
+  "endDate": "2026-06-30"
+}
+
+### endDate avant startDate (doit échouer : 400 Bad Request)
+POST {{baseUrl}}/academic-years
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "label": "2099-2100",
+  "startDate": "2100-06-30",
+  "endDate": "2099-09-01"
+}
+
+### Plage qui chevauche 2025-2026 (doit échouer : 400 Bad Request)
+POST {{baseUrl}}/academic-years
+Content-Type: {{contentType}}
+Authorization: Bearer {{adminToken}}
+
+{
+  "label": "2025-2026-bis",
+  "startDate": "2026-01-01",
+  "endDate": "2026-12-31"
+}
+
+
+### ============================================================
 ### GESTION DES RÔLES (admin only)
 ### ============================================================
 
@@ -65,7 +140,7 @@ Authorization: Bearer {{adminToken}}
   "program": "EL",
   "promotionId": "00000000-0000-0000-0000-000000000001",
   "groupId": "00000000-0000-0000-0000-000000000010",
-  "academicYearId": "00000000-0000-0000-0000-000000000100",
+  "academicYearId": "{{academicYear1Id}}",
   "semester": 1,
   "startDate": "2025-09-01"
 }
@@ -195,7 +270,7 @@ Authorization: Bearer {{adminToken}}
 {
   "promotionId": "{{promotionId}}",
   "groupId": "{{groupId}}",
-  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "academicYearId": "{{academicYear2Id}}",
   "semester": 1,
   "startDate": "2026-09-01"
 }
@@ -207,7 +282,7 @@ Authorization: Bearer {{adminToken}}
 
 {
   "groupId": "{{groupId}}",
-  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "academicYearId": "{{academicYear2Id}}",
   "semester": 2,
   "startDate": "2027-02-01"
 }
@@ -261,13 +336,13 @@ Authorization: Bearer {{adminToken}}
 {
   "groupId": "{{groupId}}",
   "courseId": "{{courseId}}",
-  "academicYearId": "00000000-0000-0000-0000-000000000101",
+  "academicYearId": "{{academicYear2Id}}",
   "semester": 1
 }
 @courseAssignmentId = {{createAssignment.response.body.$.id}}
 
 ### Lister les affectations (filtrable par groupe/cours/année/semestre)
-GET {{baseUrl}}/course-assignments?groupId={{groupId}}&academicYearId=00000000-0000-0000-0000-000000000101&semester=1
+GET {{baseUrl}}/course-assignments?groupId={{groupId}}&academicYearId={{academicYear2Id}}&semester=1
 Authorization: Bearer {{adminToken}}
 
 ### Assigner un enseignant à l'affectation de cours

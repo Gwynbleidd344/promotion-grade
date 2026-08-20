@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liste des Promotions</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #eeeeee;
+      padding-bottom: 10px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #333;
+    }
+    .btn-logout {
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f1f3f5;
+      color: #495057;
+    }
+    .btn-download {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-download:hover {
+      background-color: #218838;
+    }
+    .btn-download:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Liste des Promotions</h1>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <table>
+    <thead>
+    <tr>
+      <th>Nom de la promotion</th>
+      <th>Année de diplomation</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Boucle Thymeleaf sur la liste des promotions -->
+    <tr th:each="promo : ${promotions}">
+      <td th:text="${promo.name}">Promotion 2028</td>
+      <td th:text="${promo.graduationYear}">2028</td>
+      <td>
+        <button class="btn-download"
+                th:attr="data-id=${promo.id}"
+                onclick="downloadGraduatesList(this)">
+          📥 Télécharger les diplômés (XLSX)
+        </button>
+      </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(promotions)}">
+      <td colspan="3" style="text-align: center; color: #888;">Aucune promotion trouvée.</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+  async function downloadGraduatesList(button) {
+    const promotionId = button.getAttribute('data-id');
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) {
+      alert('Session expirée. Veuillez vous reconnecter.');
+      window.location.href = '/login';
+      return;
+    }
+
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '⏳ Génération...';
+
+    try {
+      const response = await fetch(`/api/v1/promotions/${promotionId}/graduates/export`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Redirection vers l'URL de téléchargement signée reçue de l'API (S3)
+        if (data.downloadUrl) {
+          window.location.href = data.downloadUrl;
+        } else {
+          alert('Erreur: Lien de téléchargement introuvable.');
+        }
+      } else if (response.status === 401 || response.status === 403) {
+        alert('Accès refusé ou session expirée.');
+        window.location.href = '/login';
+      } else {
+        alert('Impossible de générer le fichier des diplômés.');
+      }
+    } catch (err) {
+      alert('Erreur réseau lors du téléchargement.');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalText;
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('accessToken');
+    document.cookie = "token=; path=/; max-age=0";
+    window.location.href = '/login';
+  }
+</script>
+
+</body>
+</html>
