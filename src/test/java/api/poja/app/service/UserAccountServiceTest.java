@@ -10,16 +10,13 @@ import api.poja.app.endpoint.rest.dto.PromoteAdminRequest;
 import api.poja.app.endpoint.rest.dto.PromoteStudentRequest;
 import api.poja.app.endpoint.rest.dto.PromoteTeacherRequest;
 import api.poja.app.entity.Admin;
-import api.poja.app.entity.Program;
 import api.poja.app.entity.Promotion;
 import api.poja.app.entity.Student;
 import api.poja.app.entity.StudentGroup;
 import api.poja.app.entity.Teacher;
 import api.poja.app.entity.UserAccount;
-import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.entity.enums.UserRole;
 import api.poja.app.repository.AdminRepository;
-import api.poja.app.repository.ProgramRepository;
 import api.poja.app.repository.PromotionRepository;
 import api.poja.app.repository.StudentRepository;
 import api.poja.app.repository.TeacherRepository;
@@ -41,7 +38,6 @@ class UserAccountServiceTest {
   @Mock private StudentRepository studentRepository;
   @Mock private TeacherRepository teacherRepository;
   @Mock private AdminRepository adminRepository;
-  @Mock private ProgramRepository programRepository;
   @Mock private PromotionRepository promotionRepository;
   @Mock private SequentialCodeGenerator sequentialCodeGenerator;
   @Mock private StudentGroupAssignmentService studentGroupAssignmentService;
@@ -61,7 +57,6 @@ class UserAccountServiceTest {
             studentRepository,
             teacherRepository,
             adminRepository,
-            programRepository,
             promotionRepository,
             sequentialCodeGenerator,
             studentGroupAssignmentService);
@@ -99,21 +94,10 @@ class UserAccountServiceTest {
   }
 
   @Test
-  void promotes_account_to_student() {
+  void promotes_account_to_student_with_no_program_by_default() {
     var request =
         new PromoteStudentRequest(
-            "Jean",
-            "Rakoto",
-            ProgramCode.EL,
-            promotionId,
-            groupId,
-            academicYearId,
-            1,
-            LocalDate.of(2025, 9, 1));
-
-    var program = new Program();
-    program.setId(UUID.randomUUID());
-    program.setCode(ProgramCode.EL);
+            "Jean", "Rakoto", promotionId, groupId, academicYearId, 1, LocalDate.of(2025, 9, 1));
 
     var promotion = new Promotion();
     promotion.setId(promotionId);
@@ -123,7 +107,6 @@ class UserAccountServiceTest {
 
     when(userAccountRepository.findById(accountId)).thenReturn(Optional.of(account()));
     when(studentRepository.findByUserAccountId(accountId)).thenReturn(Optional.empty());
-    when(programRepository.findByCode(ProgramCode.EL)).thenReturn(Optional.of(program));
     when(promotionRepository.findById(promotionId)).thenReturn(Optional.of(promotion));
     when(studentGroupAssignmentService.findGroupBelongingToPromotionOrThrow(groupId, promotionId))
         .thenReturn(group);
@@ -147,14 +130,7 @@ class UserAccountServiceTest {
   void rejects_promotion_to_student_when_already_a_student() {
     var request =
         new PromoteStudentRequest(
-            "Jean",
-            "Rakoto",
-            ProgramCode.EL,
-            promotionId,
-            groupId,
-            academicYearId,
-            1,
-            LocalDate.of(2025, 9, 1));
+            "Jean", "Rakoto", promotionId, groupId, academicYearId, 1, LocalDate.of(2025, 9, 1));
     when(userAccountRepository.findById(accountId)).thenReturn(Optional.of(account()));
     when(studentRepository.findByUserAccountId(accountId)).thenReturn(Optional.of(new Student()));
 
@@ -164,24 +140,17 @@ class UserAccountServiceTest {
   }
 
   @Test
-  void rejects_promotion_to_student_when_program_unknown() {
+  void rejects_promotion_to_student_when_promotion_unknown() {
     var request =
         new PromoteStudentRequest(
-            "Jean",
-            "Rakoto",
-            ProgramCode.TN,
-            promotionId,
-            groupId,
-            academicYearId,
-            1,
-            LocalDate.of(2025, 9, 1));
+            "Jean", "Rakoto", promotionId, groupId, academicYearId, 1, LocalDate.of(2025, 9, 1));
     when(userAccountRepository.findById(accountId)).thenReturn(Optional.of(account()));
     when(studentRepository.findByUserAccountId(accountId)).thenReturn(Optional.empty());
-    when(programRepository.findByCode(ProgramCode.TN)).thenReturn(Optional.empty());
+    when(promotionRepository.findById(promotionId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.promoteToStudent(accountId, request))
         .isInstanceOf(ResponseStatusException.class)
-        .hasMessageContaining("Unknown program");
+        .hasMessageContaining("Unknown promotion");
   }
 
   @Test

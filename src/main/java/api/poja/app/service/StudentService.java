@@ -1,11 +1,13 @@
 package api.poja.app.service;
 
 import api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest;
+import api.poja.app.endpoint.rest.dto.StudentProgramChangeRequest;
 import api.poja.app.endpoint.rest.dto.StudentPromotionAndGroupChangeRequest;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.mapper.StudentGroupHistoryMapper;
 import api.poja.app.mapper.StudentMapper;
 import api.poja.app.model.Student;
+import api.poja.app.repository.ProgramRepository;
 import api.poja.app.repository.PromotionRepository;
 import api.poja.app.repository.StudentGroupHistoryRepository;
 import api.poja.app.repository.StudentRepository;
@@ -24,6 +26,7 @@ public class StudentService {
 
   private final StudentRepository studentRepository;
   private final PromotionRepository promotionRepository;
+  private final ProgramRepository programRepository;
   private final StudentGroupAssignmentService studentGroupAssignmentService;
   private final StudentGroupHistoryRepository studentGroupHistoryRepository;
 
@@ -92,6 +95,21 @@ public class StudentService {
     studentGroupAssignmentService.appendHistoryEntry(
         entity, group, request.academicYearId(), request.semester(), request.startDate());
 
+    return StudentMapper.toModel(entity);
+  }
+
+  @Transactional
+  public Student changeProgram(UUID studentId, StudentProgramChangeRequest request) {
+    var entity = findStudentOrThrow(studentId);
+    var program =
+        programRepository
+            .findByCode(request.program())
+            .orElseThrow(
+                () ->
+                    new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Unknown program: " + request.program()));
+    entity.setProgram(program);
+    studentRepository.save(entity);
     return StudentMapper.toModel(entity);
   }
 

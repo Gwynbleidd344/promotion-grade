@@ -80,6 +80,24 @@ class UserControllerIT extends IntegrationTestSupport {
   }
 
   @Test
+  void promote_to_student_leaves_program_unset_by_default() {
+    var admin = bootstrapAdminToken();
+    var fixture = createLinkedPromotionAndGroup(admin);
+    var user = register("noprogrambydefault");
+
+    var student =
+        promoteToStudent(
+            admin,
+            user.getId(),
+            fixture.promotion(),
+            fixture.group(),
+            fixture.academicYear(),
+            null);
+
+    assertThat(student.getProgram()).isNull();
+  }
+
+  @Test
   void promote_to_student_twice_fails() {
     var admin = bootstrapAdminToken();
     var fixture = createLinkedPromotionAndGroup(admin);
@@ -91,7 +109,6 @@ class UserControllerIT extends IntegrationTestSupport {
         new PromoteStudentRequest(
             "Jean",
             "Rakoto",
-            ProgramCode.EL,
             fixture.promotion().getId(),
             fixture.group().getId(),
             fixture.academicYear().getId(),
@@ -115,7 +132,6 @@ class UserControllerIT extends IntegrationTestSupport {
         new PromoteStudentRequest(
             "Jean",
             "Rakoto",
-            ProgramCode.EL,
             UUID.randomUUID(),
             fixture.group().getId(),
             fixture.academicYear().getId(),
@@ -141,7 +157,6 @@ class UserControllerIT extends IntegrationTestSupport {
         new PromoteStudentRequest(
             "Jean",
             "Rakoto",
-            ProgramCode.EL,
             promotion.getId(),
             unlinkedGroup.getId(),
             academicYear.getId(),

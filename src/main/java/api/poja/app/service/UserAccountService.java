@@ -10,7 +10,6 @@ import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.UserRole;
 import api.poja.app.mapper.UserAccountMapper;
 import api.poja.app.repository.AdminRepository;
-import api.poja.app.repository.ProgramRepository;
 import api.poja.app.repository.PromotionRepository;
 import api.poja.app.repository.StudentRepository;
 import api.poja.app.repository.TeacherRepository;
@@ -36,7 +35,6 @@ public class UserAccountService {
   private final StudentRepository studentRepository;
   private final TeacherRepository teacherRepository;
   private final AdminRepository adminRepository;
-  private final ProgramRepository programRepository;
   private final PromotionRepository promotionRepository;
   private final SequentialCodeGenerator sequentialCodeGenerator;
   private final StudentGroupAssignmentService studentGroupAssignmentService;
@@ -62,13 +60,6 @@ public class UserAccountService {
           HttpStatus.BAD_REQUEST, "This account is already a student");
     }
 
-    var program =
-        programRepository
-            .findByCode(request.program())
-            .orElseThrow(
-                () ->
-                    new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Unknown program: " + request.program()));
     var promotion =
         promotionRepository
             .findById(request.promotionId())
@@ -85,7 +76,8 @@ public class UserAccountService {
     student.setStudentNumber(nextStudentNumber());
     student.setFirstName(request.firstName());
     student.setLastName(request.lastName());
-    student.setProgram(program);
+    // Le programme n'est volontairement pas défini ici : il vaut null tant qu'il
+    // n'a pas été affecté via PATCH /api/v1/students/{id}/program.
     student.setPromotion(promotion);
     student = studentRepository.save(student);
 

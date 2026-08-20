@@ -18,7 +18,7 @@ public final class StudentMapper {
         .studentNumber(entity.getStudentNumber())
         .firstName(entity.getFirstName())
         .lastName(entity.getLastName())
-        .program(entity.getProgram().getCode())
+        .program(entity.getProgram() == null ? null : entity.getProgram().getCode())
         .promotionId(entity.getPromotion().getId())
         .userAccountId(entity.getUserAccount().getId())
         .build();
