@@ -188,18 +188,15 @@ public class AcademicReportService {
 
   @Transactional
   public void requestSend(UUID studentId, String yearLabel) {
-    findStudentOrThrow(studentId);
-    var academicYear = findAcademicYearOrThrow(yearLabel);
-    var existing =
-        academicReportRepository.findByStudentIdAndAcademicYearId(studentId, academicYear.getId());
-
-    UUID reportId =
-        (existing.isEmpty() || existing.get().getPdfS3Key() == null)
-            ? generate(studentId, yearLabel).getId()
-            : existing.get().getId();
+    var student = findStudentOrThrow(studentId);
+    var reportId = generate(studentId, yearLabel).getId();
 
     eventProducer.accept(
-        List.of(TranscriptSendRequested.builder().academicReportId(reportId).build()));
+        List.of(
+            TranscriptSendRequested.builder()
+                .academicReportId(reportId)
+                .userEmail(student.getUserAccount().getEmail())
+                .build()));
   }
 
   private boolean isSameAcademicYear(

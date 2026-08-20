@@ -3,7 +3,6 @@ package api.poja.app.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,6 +18,7 @@ import api.poja.app.entity.Program;
 import api.poja.app.entity.ProgramCourse;
 import api.poja.app.entity.Promotion;
 import api.poja.app.entity.Student;
+import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.entity.enums.ReportStatus;
 import api.poja.app.file.bucket.BucketComponent;
@@ -84,8 +84,13 @@ class AcademicReportServiceTest {
   }
 
   private Student student() {
+    var userAccount = new UserAccount();
+    userAccount.setId(UUID.randomUUID());
+    userAccount.setEmail("student@example.com");
+
     var s = new Student();
     s.setId(studentId);
+    s.setUserAccount(userAccount);
     s.setStudentNumber("STD001");
     s.setFirstName("Jean");
     s.setLastName("Rakoto");
@@ -228,22 +233,42 @@ class AcademicReportServiceTest {
   }
 
   @Test
-  void request_send_reuses_existing_report_when_pdf_already_generated() {
+  void request_send_always_regenerates_report_even_when_one_already_exists()
+      throws MalformedURLException {
     var year = academicYear();
-    var existingId = UUID.randomUUID();
+    var course = course("PROG1", 5);
+    var gc = new GroupCourse();
+    gc.setCourse(course);
+    gc.setAcademicYear(year);
+
     var existing = new api.poja.app.entity.AcademicReport();
-    existing.setId(existingId);
+    existing.setId(UUID.randomUUID());
     existing.setPdfS3Key("transcripts/x/2025-2026.pdf");
 
     when(studentRepository.findById(studentId)).thenReturn(Optional.of(student()));
     when(academicYearRepository.findByLabel("2025-2026")).thenReturn(Optional.of(year));
     when(academicReportRepository.findByStudentIdAndAcademicYearId(studentId, academicYearId))
         .thenReturn(Optional.of(existing));
+    when(groupCourseRepository.findAll()).thenReturn(List.of(gc));
+    when(gradeRepository.findByStudentId(studentId))
+        .thenReturn(List.of(gradeFor(course, new BigDecimal("14"), year)));
+    when(academicReportRepository.save(any()))
+        .thenAnswer(
+            invocation -> {
+              api.poja.app.entity.AcademicReport r = invocation.getArgument(0);
+              r.setId(UUID.randomUUID());
+              return r;
+            });
+    when(bucketComponent.presign(anyString(), any(Duration.class)))
+        .thenReturn(new URL("https://bucket.example.com/report.pdf"));
 
     service.requestSend(studentId, "2025-2026");
 
     verify(eventProducer, times(1)).accept(any());
-    verify(academicReportRepository, never()).save(any());
+    // Le rapport doit être régénéré (nouveau PDF uploadé et entité sauvegardée),
+    // même si un rapport existait déjà avec un pdfS3Key non nul.
+    verify(bucketComponent).upload(any(), anyString());
+    verify(academicReportRepository).save(any());
   }
 
   @Test
