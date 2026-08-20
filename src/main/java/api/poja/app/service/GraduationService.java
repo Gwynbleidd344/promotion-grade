@@ -55,6 +55,10 @@ public class GraduationService {
   @Transactional(readOnly = true)
   public GraduationStatus getGraduationStatus(UUID studentId) {
     var student = findStudentOrThrow(studentId);
+    if (student.getProgram() == null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "Student has no program assigned");
+    }
     var allGrades = gradeRepository.findByStudentId(studentId);
 
     var programCourses = programCourseRepository.findByProgramId(student.getProgram().getId());
@@ -145,7 +149,7 @@ public class GraduationService {
       students =
           studentRepository.findAll().stream()
               .filter(s -> s.getPromotion().getId().equals(promotionId))
-              .filter(s -> s.getProgram().getCode() == programCode)
+              .filter(s -> s.getProgram() != null && s.getProgram().getCode() == programCode)
               .toList();
     } else {
       students = studentRepository.findByPromotionId(promotionId);

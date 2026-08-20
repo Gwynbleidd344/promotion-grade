@@ -12,6 +12,7 @@ import api.poja.app.endpoint.rest.dto.PromoteTeacherRequest;
 import api.poja.app.endpoint.rest.dto.PromotionCreateRequest;
 import api.poja.app.endpoint.rest.dto.RegisterRequest;
 import api.poja.app.endpoint.rest.dto.StudentGroupCreateRequest;
+import api.poja.app.endpoint.rest.dto.StudentProgramChangeRequest;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.entity.enums.UserRole;
@@ -199,11 +200,26 @@ public abstract class IntegrationTestSupport extends FacadeIT {
       Promotion promotion,
       StudentGroup group,
       AcademicYear academicYear) {
+    return promoteToStudent(adminToken, userId, promotion, group, academicYear, ProgramCode.EL);
+  }
+
+  /**
+   * Promotes the user to student, then sets the program via PATCH
+   * /students/{id}/program. A freshly-promoted student has no program (it is
+   * null) until this second call, mirroring production behaviour. Pass {@code
+   * null} to leave the program unset.
+   */
+  protected Student promoteToStudent(
+      String adminToken,
+      UUID userId,
+      Promotion promotion,
+      StudentGroup group,
+      AcademicYear academicYear,
+      ProgramCode programCode) {
     var request =
         new PromoteStudentRequest(
             "Jean",
             "Rakoto",
-            ProgramCode.EL,
             promotion.getId(),
             group.getId(),
             academicYear.getId(),
@@ -212,10 +228,25 @@ public abstract class IntegrationTestSupport extends FacadeIT {
     var response =
         patch(API + "/users/" + userId + "/role/student", adminToken, request, UserAccount.class);
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    return studentRepository
-        .findByUserAccountIdWithAssociations(userId)
-        .map(StudentMapper::toModel)
-        .orElseThrow();
+
+    var student =
+        studentRepository
+            .findByUserAccountIdWithAssociations(userId)
+            .map(StudentMapper::toModel)
+            .orElseThrow();
+
+    if (programCode == null) {
+      return student;
+    }
+
+    var programResponse =
+        patch(
+            API + "/students/" + student.getId() + "/program",
+            adminToken,
+            new StudentProgramChangeRequest(programCode),
+            Student.class);
+    assertThat(programResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return programResponse.getBody();
   }
 
   protected UserAccount promoteToTeacher(String adminToken, UUID userId) {

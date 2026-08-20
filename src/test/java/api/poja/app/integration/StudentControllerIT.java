@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import api.poja.app.endpoint.rest.dto.ErrorResponse;
 import api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest;
+import api.poja.app.endpoint.rest.dto.StudentProgramChangeRequest;
 import api.poja.app.endpoint.rest.dto.StudentPromotionAndGroupChangeRequest;
+import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.model.Student;
 import api.poja.app.model.StudentGroupHistory;
 import api.poja.app.repository.StudentGroupHistoryRepository;
@@ -142,6 +144,64 @@ class StudentControllerIT extends IntegrationTestSupport {
   }
 
   @Test
+  void newly_promoted_student_has_no_program_by_default() {
+    var admin = bootstrapAdminToken();
+    var fixture = createLinkedPromotionAndGroup(admin);
+    var user = register("noprogramstudent");
+    var student =
+        promoteToStudent(
+            admin,
+            user.getId(),
+            fixture.promotion(),
+            fixture.group(),
+            fixture.academicYear(),
+            null);
+
+    assertThat(student.getProgram()).isNull();
+
+    var response = get(API + "/students/" + student.getId(), admin, Student.class);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getProgram()).isNull();
+  }
+
+  @Test
+  void changes_student_program() {
+    var admin = bootstrapAdminToken();
+    var fixture = createLinkedPromotionAndGroup(admin);
+    var user = register("programchangestudent");
+    var student =
+        promoteToStudent(
+            admin,
+            user.getId(),
+            fixture.promotion(),
+            fixture.group(),
+            fixture.academicYear(),
+            null);
+
+    var request = new StudentProgramChangeRequest(ProgramCode.TN);
+    var response =
+        patch(API + "/students/" + student.getId() + "/program", admin, request, Student.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().getProgram()).isEqualTo(ProgramCode.TN);
+  }
+
+  @Test
+  void change_program_for_unknown_student_returns_not_found() {
+    var admin = bootstrapAdminToken();
+    var request = new StudentProgramChangeRequest(ProgramCode.EL);
+
+    var response =
+        patch(
+            API + "/students/" + UUID.randomUUID() + "/program",
+            admin,
+            request,
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
   void get_group_history_returns_initial_entry_after_promotion() {
     var admin = bootstrapAdminToken();
     var fixture = createLinkedPromotionAndGroup(admin);
@@ -182,7 +242,7 @@ class StudentControllerIT extends IntegrationTestSupport {
     var changeDate = fixture.academicYear().getStartDate().plusMonths(6);
 
     var changeRequest =
-        new api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest(
+        new StudentGroupChangeRequest(
             secondGroup.getId(), secondAcademicYear.getId(), 2, changeDate);
     var changeResponse =
         patch(API + "/students/" + student.getId() + "/group", admin, changeRequest, Student.class);

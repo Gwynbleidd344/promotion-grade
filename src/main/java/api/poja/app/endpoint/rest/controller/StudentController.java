@@ -1,6 +1,7 @@
 package api.poja.app.endpoint.rest.controller;
 
 import api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest;
+import api.poja.app.endpoint.rest.dto.StudentProgramChangeRequest;
 import api.poja.app.endpoint.rest.dto.StudentPromotionAndGroupChangeRequest;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.model.Student;
@@ -49,6 +50,12 @@ public class StudentController {
   public ResponseEntity<Student> changeGroup(
       @PathVariable UUID id, @Valid @RequestBody StudentGroupChangeRequest request) {
     return ResponseEntity.ok(studentService.changeGroup(id, request));
+  }
+
+  @PatchMapping("/{id}/program")
+  public ResponseEntity<Student> changeProgram(
+      @PathVariable UUID id, @Valid @RequestBody StudentProgramChangeRequest request) {
+    return ResponseEntity.ok(studentService.changeProgram(id, request));
   }
 
   @GetMapping("/{id}/group-history")

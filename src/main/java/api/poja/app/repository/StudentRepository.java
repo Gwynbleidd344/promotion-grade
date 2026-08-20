@@ -24,9 +24,9 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
   List<Student> findByPromotionIdAndProgramId(UUID promotionId, UUID programId);
 
   @Query(
-      "select s from Student s where "
+      "select s from Student s left join s.program p where "
           + "(:promotionId is null or s.promotion.id = :promotionId) "
-          + "and (:programCode is null or s.program.code = :programCode)")
+          + "and (:programCode is null or p.code = :programCode)")
   Page<Student> findAllFiltered(
       @Param("promotionId") UUID promotionId,
       @Param("programCode") ProgramCode programCode,
@@ -34,7 +34,7 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
 
   @Query(
       "select s from Student s "
-          + "join fetch s.program "
+          + "left join fetch s.program "
           + "join fetch s.promotion "
           + "join fetch s.userAccount "
           + "where s.userAccount.id = :userAccountId")

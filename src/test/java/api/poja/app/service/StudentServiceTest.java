@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import api.poja.app.endpoint.rest.dto.StudentGroupChangeRequest;
+import api.poja.app.endpoint.rest.dto.StudentProgramChangeRequest;
 import api.poja.app.endpoint.rest.dto.StudentPromotionAndGroupChangeRequest;
 import api.poja.app.entity.Program;
 import api.poja.app.entity.Promotion;
@@ -16,6 +17,7 @@ import api.poja.app.entity.StudentGroup;
 import api.poja.app.entity.StudentGroupHistory;
 import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.ProgramCode;
+import api.poja.app.repository.ProgramRepository;
 import api.poja.app.repository.PromotionRepository;
 import api.poja.app.repository.StudentGroupHistoryRepository;
 import api.poja.app.repository.StudentRepository;
@@ -37,6 +39,7 @@ class StudentServiceTest {
 
   @Mock private StudentRepository studentRepository;
   @Mock private PromotionRepository promotionRepository;
+  @Mock private ProgramRepository programRepository;
   @Mock private StudentGroupAssignmentService studentGroupAssignmentService;
   @Mock private StudentGroupHistoryRepository studentGroupHistoryRepository;
 
@@ -53,6 +56,7 @@ class StudentServiceTest {
         new StudentService(
             studentRepository,
             promotionRepository,
+            programRepository,
             studentGroupAssignmentService,
             studentGroupHistoryRepository);
     studentId = UUID.randomUUID();
@@ -224,5 +228,68 @@ class StudentServiceTest {
     assertThat(result.getStudentNumber()).isEqualTo("STD001");
     verify(studentGroupAssignmentService)
         .appendHistoryEntry(any(), eq(group), eq(academicYearId), eq(1), eq(request.startDate()));
+  }
+
+  @Test
+  void changes_program() {
+    var request = new StudentProgramChangeRequest(ProgramCode.TN);
+    var newProgram = new Program();
+    newProgram.setId(UUID.randomUUID());
+    newProgram.setCode(ProgramCode.TN);
+
+    var entity = student();
+    when(studentRepository.findById(studentId)).thenReturn(Optional.of(entity));
+    when(programRepository.findByCode(ProgramCode.TN)).thenReturn(Optional.of(newProgram));
+
+    var result = service.changeProgram(studentId, request);
+
+    assertThat(result.getProgram()).isEqualTo(ProgramCode.TN);
+    assertThat(entity.getProgram()).isEqualTo(newProgram);
+    verify(studentRepository).save(entity);
+  }
+
+  @Test
+  void rejects_program_change_when_program_unknown() {
+    var request = new StudentProgramChangeRequest(ProgramCode.TN);
+    when(studentRepository.findById(studentId)).thenReturn(Optional.of(student()));
+    when(programRepository.findByCode(ProgramCode.TN)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.changeProgram(studentId, request))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("Unknown program");
+  }
+
+  @Test
+  void rejects_program_change_when_student_not_found() {
+    var request = new StudentProgramChangeRequest(ProgramCode.TN);
+    when(studentRepository.findById(studentId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.changeProgram(studentId, request))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("Student not found");
+  }
+
+  @Test
+  void maps_student_with_no_program_to_null_program() {
+    var s = new Student();
+    s.setId(studentId);
+    s.setStudentNumber("STD002");
+    s.setFirstName("Marie");
+    s.setLastName("Rasoa");
+    s.setProgram(null);
+
+    var promotion = new Promotion();
+    promotion.setId(promotionId);
+    s.setPromotion(promotion);
+
+    var userAccount = new UserAccount();
+    userAccount.setId(UUID.randomUUID());
+    s.setUserAccount(userAccount);
+
+    when(studentRepository.findById(studentId)).thenReturn(Optional.of(s));
+
+    var result = service.getById(studentId);
+
+    assertThat(result.getProgram()).isNull();
   }
 }
