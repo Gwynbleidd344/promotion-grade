@@ -1,12 +1,18 @@
 package api.poja.app.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import api.poja.app.endpoint.rest.dto.ErrorResponse;
 import api.poja.app.entity.Exam;
 import api.poja.app.entity.Grade;
 import api.poja.app.entity.ProgramCourse;
 import api.poja.app.entity.enums.ProgramCode;
+import api.poja.app.file.bucket.BucketComponent;
+import api.poja.app.model.Course;
 import api.poja.app.model.GraduationListEntry;
 import api.poja.app.model.GraduationListExport;
 import api.poja.app.model.GraduationStatus;
@@ -17,14 +23,18 @@ import api.poja.app.repository.GroupCourseRepository;
 import api.poja.app.repository.ProgramCourseRepository;
 import api.poja.app.repository.ProgramRepository;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -32,299 +42,392 @@ import org.springframework.http.HttpStatus;
 
 class GraduationControllerIT extends IntegrationTestSupport {
 
-    @Autowired private CourseRepository courseRepository;
-    @Autowired private GroupCourseRepository groupCourseRepository;
-    @Autowired private ExamRepository examRepository;
-    @Autowired private GradeRepository gradeRepository;
-    @Autowired private ProgramRepository programRepository;
-    @Autowired private ProgramCourseRepository programCourseRepository;
+  private static final BigDecimal PASSING_GRADE = new BigDecimal("15.00");
 
-    private record StudentFixture(
-            UUID studentId,
-            String studentNumber,
-            UUID promotionId,
-            UUID groupId,
-            UUID academicYearId,
-            String yearLabel,
-            UUID courseId,
-            int courseCredits) {}
+  @Autowired private CourseRepository courseRepository;
+  @Autowired private GroupCourseRepository groupCourseRepository;
+  @Autowired private ExamRepository examRepository;
+  @Autowired private GradeRepository gradeRepository;
+  @Autowired private ProgramRepository programRepository;
+  @Autowired private ProgramCourseRepository programCourseRepository;
 
-    @BeforeEach
-    void setUp() {
-        gradeRepository.deleteAll();
-        examRepository.deleteAll();
-        groupCourseRepository.deleteAll();
+  @MockBean private BucketComponent bucketComponent;
+
+  @BeforeEach
+  void stubBucket() throws Exception {
+    when(bucketComponent.presign(any(), any()))
+        .thenReturn(new URI("https://dummy-bucket.s3.amazonaws.com/signed").toURL());
+  }
+
+  private record StudentFixture(UUID studentId, UUID promotionId) {}
+
+  private Course addCourseToProgram(String adminToken) {
+    var course = createCourse(adminToken);
+    var program = programRepository.findByCode(ProgramCode.EL).orElseThrow();
+    var courseEntity = courseRepository.findById(course.getId()).orElseThrow();
+    var programCourse = new ProgramCourse();
+    programCourse.setProgram(program);
+    programCourse.setCourse(courseEntity);
+    programCourseRepository.save(programCourse);
+    return course;
+  }
+
+  private Exam ensureExamForCourse(
+      String adminToken, BasePromotionFixture base, UUID courseId, Map<UUID, Exam> examCache) {
+    var cached = examCache.get(courseId);
+    if (cached != null) {
+      return cached;
     }
+    var assignment =
+        createCourseAssignment(
+            adminToken, base.group().getId(), courseId, base.academicYear().getId(), 1);
+    var groupCourse = groupCourseRepository.findById(assignment.getId()).orElseThrow();
+    var exam = new Exam();
+    exam.setGroupCourse(groupCourse);
+    exam.setName("Examen final");
+    exam.setExamDate(LocalDate.now());
+    exam.setExamTime(LocalTime.of(8, 0));
+    exam.setCoefficient(new BigDecimal("1.0000"));
+    exam = examRepository.save(exam);
+    examCache.put(courseId, exam);
+    return exam;
+  }
 
-    private StudentFixture createStudentWithGrades(String adminToken, boolean passed) {
-        var base = createLinkedPromotionAndGroup(adminToken);
-        var user = register("grad-student-" + UUID.randomUUID().toString().substring(0, 6));
-        var student = promoteToStudent(
-                adminToken, user.getId(), base.promotion(), base.group(), base.academicYear());
+  private void gradeStudentOnCourse(UUID studentId, Exam exam, BigDecimal value) {
+    var studentEntity = studentRepository.findById(studentId).orElseThrow();
+    var grade = new Grade();
+    grade.setStudent(studentEntity);
+    grade.setExam(exam);
+    grade.setValue(value);
+    grade.setCreatedAt(LocalDateTime.now());
+    grade.setUpdatedAt(LocalDateTime.now());
+    gradeRepository.save(grade);
+  }
 
-        var course = createCourse(adminToken);
-
-        var program = programRepository.findByCode(ProgramCode.EL).orElseThrow();
-        var courseEntity = courseRepository.findById(course.getId()).orElseThrow();
-        var programCourse = new ProgramCourse();
-        programCourse.setProgram(program);
-        programCourse.setCourse(courseEntity);
-        programCourseRepository.save(programCourse);
-
-        var assignment = createCourseAssignment(
-                adminToken, base.group().getId(), course.getId(), base.academicYear().getId(), 1);
-
-        var groupCourse = groupCourseRepository.findById(assignment.getId()).orElseThrow();
-        var exam = new Exam();
-        exam.setGroupCourse(groupCourse);
-        exam.setName("Examen final");
-        exam.setExamDate(LocalDate.now());
-        exam.setExamTime(LocalTime.of(8, 0));
-        exam.setCoefficient(new BigDecimal("1.0000"));
-        exam = examRepository.save(exam);
-
-        var studentEntity = studentRepository.findById(student.getId()).orElseThrow();
-        var grade = new Grade();
-        grade.setStudent(studentEntity);
-        grade.setExam(exam);
-        grade.setValue(passed ? new BigDecimal("15.00") : new BigDecimal("8.00"));
-        grade.setCreatedAt(LocalDateTime.now());
-        grade.setUpdatedAt(LocalDateTime.now());
-        gradeRepository.save(grade);
-
-        return new StudentFixture(
-                student.getId(),
-                student.getStudentNumber(),
-                base.promotion().getId(),
-                base.group().getId(),
-                base.academicYear().getId(),
-                base.academicYear().getLabel(),
-                course.getId(),
-                course.getCredits());
+  private void gradeStudentOnAllProgramCourses(
+      String adminToken,
+      BasePromotionFixture base,
+      UUID studentId,
+      Map<UUID, Exam> examCache,
+      BigDecimal value) {
+    var program = programRepository.findByCode(ProgramCode.EL).orElseThrow();
+    var programCourses = programCourseRepository.findByProgramId(program.getId());
+    for (var pc : programCourses) {
+      var exam = ensureExamForCourse(adminToken, base, pc.getCourse().getId(), examCache);
+      gradeStudentOnCourse(studentId, exam, value);
     }
+  }
 
-    @Test
-    void getGraduationStatus_returns_graduated_when_all_courses_passed() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
+  private StudentFixture setUpGraduatedStudent(String adminToken, BigDecimal average) {
+    var base = createLinkedPromotionAndGroup(adminToken);
+    var user = register("student-" + UUID.randomUUID());
+    var student =
+        promoteToStudent(
+            adminToken, user.getId(), base.promotion(), base.group(), base.academicYear());
 
-        var response = get(API + "/students/" + fixture.studentId() + "/graduation", admin, GraduationStatus.class);
+    addCourseToProgram(adminToken);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().isGraduated()).isTrue();
-        assertThat(response.getBody().getStudentId()).isEqualTo(fixture.studentId());
-        assertThat(response.getBody().getGeneralAverage()).isNotNull();
-        assertThat(response.getBody().getTotalCreditsObtained()).isEqualTo(fixture.courseCredits());
-        assertThat(response.getBody().getFailedCourses()).isEmpty();
-    }
+    var examCache = new HashMap<UUID, Exam>();
+    gradeStudentOnAllProgramCourses(adminToken, base, student.getId(), examCache, average);
 
-    @Test
-    void getGraduationStatus_returns_not_graduated_when_course_failed() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, false);
+    return new StudentFixture(student.getId(), base.promotion().getId());
+  }
 
-        var response = get(API + "/students/" + fixture.studentId() + "/graduation", admin, GraduationStatus.class);
+  private StudentFixture setUpNonGraduatedStudent(String adminToken) {
+    var base = createLinkedPromotionAndGroup(adminToken);
+    var user = register("student-" + UUID.randomUUID());
+    var student =
+        promoteToStudent(
+            adminToken, user.getId(), base.promotion(), base.group(), base.academicYear());
+    addCourseToProgram(adminToken);
+    return new StudentFixture(student.getId(), base.promotion().getId());
+  }
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().isGraduated()).isFalse();
-        assertThat(response.getBody().getFailedCourses()).isNotEmpty();
-        assertThat(response.getBody().getFailedCourses().get(0).getAverage()).isLessThan(BigDecimal.TEN);
-    }
+  private List<GraduationListEntry> getGraduates(String token, UUID promotionId) {
+    var response =
+        restTemplate.exchange(
+            API + "/promotions/" + promotionId + "/graduates",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(token)),
+            new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    return response.getBody();
+  }
 
-    @Test
-    void getGraduationStatus_returns_not_found_for_unknown_student() {
-        var admin = bootstrapAdminToken();
+  @Test
+  void get_graduation_status_for_student_with_all_courses_passed_returns_graduated() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
 
-        var response = get(API + "/students/" + UUID.randomUUID() + "/graduation", admin, ErrorResponse.class);
+    var response =
+        get(
+            API + "/students/" + fixture.studentId() + "/graduation",
+            admin,
+            GraduationStatus.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var status = response.getBody();
+    assertThat(status.getStudentId()).isEqualTo(fixture.studentId());
+    assertThat(status.isGraduated()).isTrue();
+    assertThat(status.getGeneralAverage()).isEqualByComparingTo(PASSING_GRADE);
+    assertThat(status.getTotalCreditsObtained()).isPositive();
+    assertThat(status.getFailedCourses()).isEmpty();
+  }
 
-    @Test
-    void getGraduationStatus_requires_authentication() {
-        var response = get(API + "/students/" + UUID.randomUUID() + "/graduation", null, ErrorResponse.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-    }
+  @Test
+  void get_graduation_status_for_student_with_ungraded_course_returns_not_graduated() {
+    var admin = bootstrapAdminToken();
+    var base = createLinkedPromotionAndGroup(admin);
+    var user = register("student-" + UUID.randomUUID());
+    var student =
+        promoteToStudent(admin, user.getId(), base.promotion(), base.group(), base.academicYear());
+    var examCache = new HashMap<UUID, Exam>();
 
-    @Test
-    void student_can_view_own_graduation_status() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
-        var user = registerAndLogin("self-grad-" + UUID.randomUUID().toString().substring(0, 6));
+    addCourseToProgram(admin);
+    gradeStudentOnAllProgramCourses(admin, base, student.getId(), examCache, PASSING_GRADE);
+    var ungradedCourse = addCourseToProgram(admin);
 
-        var response = get(API + "/students/" + fixture.studentId() + "/graduation", user.token(), GraduationStatus.class);
+    var response =
+        get(API + "/students/" + student.getId() + "/graduation", admin, GraduationStatus.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var status = response.getBody();
+    assertThat(status.isGraduated()).isFalse();
+    assertThat(status.getFailedCourses()).hasSize(1);
+    assertThat(status.getFailedCourses().getFirst().getCourseId())
+        .isEqualTo(ungradedCourse.getId());
+    assertThat(status.getFailedCourses().getFirst().getAverage()).isNull();
+  }
 
-    @Test
-    void getGraduates_returns_list_of_graduated_students_sorted_by_rank() {
-        var admin = bootstrapAdminToken();
+  @Test
+  void get_graduation_status_for_student_with_failing_grade_lists_failed_course() {
+    var admin = bootstrapAdminToken();
+    var base = createLinkedPromotionAndGroup(admin);
+    var user = register("student-" + UUID.randomUUID());
+    var student =
+        promoteToStudent(admin, user.getId(), base.promotion(), base.group(), base.academicYear());
+    var examCache = new HashMap<UUID, Exam>();
 
-        var fixture1 = createStudentWithGrades(admin, true);
+    addCourseToProgram(admin);
+    gradeStudentOnAllProgramCourses(admin, base, student.getId(), examCache, PASSING_GRADE);
 
-        var base2 = createLinkedPromotionAndGroup(admin);
-        var user2 = register("grad-student2-" + UUID.randomUUID().toString().substring(0, 6));
-        var student2 = promoteToStudent(
-                admin, user2.getId(), base2.promotion(), base2.group(), base2.academicYear());
-        var course2 = createCourse(admin);
-        var program2 = programRepository.findByCode(ProgramCode.EL).orElseThrow();
-        var courseEntity2 = courseRepository.findById(course2.getId()).orElseThrow();
-        var programCourse2 = new ProgramCourse();
-        programCourse2.setProgram(program2);
-        programCourse2.setCourse(courseEntity2);
-        programCourseRepository.save(programCourse2);
-        var assignment2 = createCourseAssignment(
-                admin, base2.group().getId(), course2.getId(), base2.academicYear().getId(), 1);
-        var groupCourse2 = groupCourseRepository.findById(assignment2.getId()).orElseThrow();
-        var exam2 = new Exam();
-        exam2.setGroupCourse(groupCourse2);
-        exam2.setName("Examen final");
-        exam2.setExamDate(LocalDate.now());
-        exam2.setExamTime(LocalTime.of(8, 0));
-        exam2.setCoefficient(new BigDecimal("1.0000"));
-        exam2 = examRepository.save(exam2);
-        var studentEntity2 = studentRepository.findById(student2.getId()).orElseThrow();
-        var grade2 = new Grade();
-        grade2.setStudent(studentEntity2);
-        grade2.setExam(exam2);
-        grade2.setValue(new BigDecimal("18.00"));
-        grade2.setCreatedAt(LocalDateTime.now());
-        grade2.setUpdatedAt(LocalDateTime.now());
-        gradeRepository.save(grade2);
+    var failingCourse = addCourseToProgram(admin);
+    var failingGrade = new BigDecimal("8.00");
+    var exam = ensureExamForCourse(admin, base, failingCourse.getId(), examCache);
+    gradeStudentOnCourse(student.getId(), exam, failingGrade);
 
-        var response = restTemplate.exchange(
-                API + "/promotions/" + fixture1.promotionId() + "/graduates?programCode=EL",
-                HttpMethod.GET,
-                new HttpEntity<>(authHeaders(admin)),
-                new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+    var response =
+        get(API + "/students/" + student.getId() + "/graduation", admin, GraduationStatus.class);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isNotEmpty();
-        var entries = response.getBody();
-        for (int i = 0; i < entries.size(); i++) {
-            assertThat(entries.get(i).getRank()).isEqualTo(i + 1);
-        }
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var status = response.getBody();
+    assertThat(status.isGraduated()).isFalse();
+    assertThat(status.getFailedCourses()).hasSize(1);
+    assertThat(status.getFailedCourses().getFirst().getCourseId()).isEqualTo(failingCourse.getId());
+    assertThat(status.getFailedCourses().getFirst().getAverage())
+        .isEqualByComparingTo(failingGrade);
+  }
 
-    @Test
-    void getGraduates_filters_by_program_code() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
+  @Test
+  void get_graduation_status_for_unknown_student_returns_not_found() {
+    var admin = bootstrapAdminToken();
 
-        var responseEL = restTemplate.exchange(
-                API + "/promotions/" + fixture.promotionId() + "/graduates?programCode=EL",
-                HttpMethod.GET,
-                new HttpEntity<>(authHeaders(admin)),
-                new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+    var response =
+        get(API + "/students/" + UUID.randomUUID() + "/graduation", admin, ErrorResponse.class);
 
-        assertThat(responseEL.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
 
-        var responseTN = restTemplate.exchange(
-                API + "/promotions/" + fixture.promotionId() + "/graduates?programCode=TN",
-                HttpMethod.GET,
-                new HttpEntity<>(authHeaders(admin)),
-                new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+  @Test
+  void get_graduation_status_without_token_returns_unauthorized() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
 
-        assertThat(responseTN.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(responseTN.getBody()).isEmpty();
-    }
+    var response =
+        get(API + "/students/" + fixture.studentId() + "/graduation", null, ErrorResponse.class);
 
-    @Test
-    void getGraduates_returns_empty_list_when_no_graduates() {
-        var admin = bootstrapAdminToken();
-        var promotion = createPromotion(admin);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
 
-        var response = restTemplate.exchange(
-                API + "/promotions/" + promotion.getId() + "/graduates",
-                HttpMethod.GET,
-                new HttpEntity<>(authHeaders(admin)),
-                new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+  @Test
+  void get_graduation_status_is_accessible_to_any_authenticated_user() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
+    var teacherUser = register("teacher-grad-" + UUID.randomUUID());
+    promoteToTeacher(admin, teacherUser.getId());
+    var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isEmpty();
-    }
+    var response =
+        get(
+            API + "/students/" + fixture.studentId() + "/graduation",
+            teacherToken,
+            GraduationStatus.class);
 
-    @Test
-    void getGraduates_returns_not_found_for_unknown_promotion() {
-        var admin = bootstrapAdminToken();
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+  }
 
-        var response = get(API + "/promotions/" + UUID.randomUUID() + "/graduates", admin, ErrorResponse.class);
+  @Test
+  void get_graduates_returns_only_graduated_students_ranked_by_average_desc() {
+    var admin = bootstrapAdminToken();
+    var base = createLinkedPromotionAndGroup(admin);
+    var examCache = new HashMap<UUID, Exam>();
+    addCourseToProgram(admin);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
+    var topUser = register("top-" + UUID.randomUUID());
+    var topStudent =
+        promoteToStudent(
+            admin, topUser.getId(), base.promotion(), base.group(), base.academicYear());
+    gradeStudentOnAllProgramCourses(
+        admin, base, topStudent.getId(), examCache, new BigDecimal("18.00"));
 
-    @Test
-    void getGraduates_requires_admin_role() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
-        var user = registerAndLogin("nonadmin-grad-" + UUID.randomUUID().toString().substring(0, 6));
+    var secondUser = register("second-" + UUID.randomUUID());
+    var secondStudent =
+        promoteToStudent(
+            admin, secondUser.getId(), base.promotion(), base.group(), base.academicYear());
+    gradeStudentOnAllProgramCourses(
+        admin, base, secondStudent.getId(), examCache, new BigDecimal("12.00"));
 
-        var response = get(API + "/promotions/" + fixture.promotionId() + "/graduates", user.token(), ErrorResponse.class);
+    var failingUser = register("failing-" + UUID.randomUUID());
+    promoteToStudent(
+        admin, failingUser.getId(), base.promotion(), base.group(), base.academicYear());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }
+    var entries = getGraduates(admin, base.promotion().getId());
 
-    @Test
-    void exportGraduates_generates_xlsx_and_returns_download_url() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
+    assertThat(entries).hasSize(2);
+    assertThat(entries.get(0).getRank()).isEqualTo(1);
+    assertThat(entries.get(0).getGeneralAverage()).isEqualByComparingTo("18.00");
+    assertThat(entries.get(1).getRank()).isEqualTo(2);
+    assertThat(entries.get(1).getGeneralAverage()).isEqualByComparingTo("12.00");
+  }
 
-        var response = get(API + "/promotions/" + fixture.promotionId() + "/graduates/export", admin, GraduationListExport.class);
+  @Test
+  void get_graduates_filters_by_program_code() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        var export = response.getBody();
-        assertThat(export.getPromotionId()).isEqualTo(fixture.promotionId());
-        assertThat(export.getS3Key()).isNotNull().isNotEmpty();
-        assertThat(export.getDownloadUrl()).isNotNull().isNotEmpty();
-        assertThat(export.getGeneratedAt()).isNotNull();
-        assertThat(export.getDownloadUrl()).startsWith("https://");
-    }
+    var matching = getGraduates(admin, fixture.promotionId());
+    assertThat(matching).hasSize(1);
 
-    @Test
-    void exportGraduates_works_with_no_graduates() {
-        var admin = bootstrapAdminToken();
-        var promotion = createPromotion(admin);
+    var response =
+        restTemplate.exchange(
+            API + "/promotions/" + fixture.promotionId() + "/graduates?programCode=TN",
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders(admin)),
+            new ParameterizedTypeReference<List<GraduationListEntry>>() {});
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isEmpty();
+  }
 
-        var response = get(API + "/promotions/" + promotion.getId() + "/graduates/export", admin, GraduationListExport.class);
+  @Test
+  void get_graduates_for_promotion_with_no_graduated_students_returns_empty_list() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpNonGraduatedStudent(admin);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        var export = response.getBody();
-        assertThat(export.getPromotionId()).isEqualTo(promotion.getId());
-        assertThat(export.getS3Key()).isNotNull();
-        assertThat(export.getDownloadUrl()).isNotNull();
-    }
+    var entries = getGraduates(admin, fixture.promotionId());
 
-    @Test
-    void exportGraduates_returns_not_found_for_unknown_promotion() {
-        var admin = bootstrapAdminToken();
+    assertThat(entries).isEmpty();
+  }
 
-        var response = get(API + "/promotions/" + UUID.randomUUID() + "/graduates/export", admin, ErrorResponse.class);
+  @Test
+  void get_graduates_for_unknown_promotion_returns_not_found() {
+    var admin = bootstrapAdminToken();
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
+    var response =
+        get(API + "/promotions/" + UUID.randomUUID() + "/graduates", admin, ErrorResponse.class);
 
-    @Test
-    void exportGraduates_requires_admin_role() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
-        var user = registerAndLogin("nonadmin-export-" + UUID.randomUUID().toString().substring(0, 6));
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
 
-        var response = get(API + "/promotions/" + fixture.promotionId() + "/graduates/export", user.token(), ErrorResponse.class);
+  @Test
+  void non_admin_cannot_list_graduates() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
+    var teacherUser = register("teacher-list-" + UUID.randomUUID());
+    promoteToTeacher(admin, teacherUser.getId());
+    var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    }
+    var response =
+        get(
+            API + "/promotions/" + fixture.promotionId() + "/graduates",
+            teacherToken,
+            ErrorResponse.class);
 
-    @Test
-    void exportGraduates_produces_consistent_format() {
-        var admin = bootstrapAdminToken();
-        var fixture = createStudentWithGrades(admin, true);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
 
-        var response1 = get(API + "/promotions/" + fixture.promotionId() + "/graduates/export", admin, GraduationListExport.class);
-        var response2 = get(API + "/promotions/" + fixture.promotionId() + "/graduates/export", admin, GraduationListExport.class);
+  @Test
+  void list_graduates_without_token_returns_unauthorized() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
 
-        assertThat(response1.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response1.getBody().getS3Key()).isNotEqualTo(response2.getBody().getS3Key());
-    }
+    var response =
+        get(API + "/promotions/" + fixture.promotionId() + "/graduates", null, ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
+
+  @Test
+  void export_graduates_uploads_workbook_and_returns_download_url() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
+
+    var response =
+        get(
+            API + "/promotions/" + fixture.promotionId() + "/graduates/export",
+            admin,
+            GraduationListExport.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    var export = response.getBody();
+    assertThat(export.getPromotionId()).isEqualTo(fixture.promotionId());
+    assertThat(export.getS3Key()).isNotBlank();
+    assertThat(export.getDownloadUrl()).isNotBlank();
+    assertThat(export.getGeneratedAt()).isNotNull();
+    verify(bucketComponent, times(1)).upload(any(), any());
+    verify(bucketComponent, times(1)).presign(any(), any());
+  }
+
+  @Test
+  void export_graduates_for_unknown_promotion_returns_not_found() {
+    var admin = bootstrapAdminToken();
+
+    var response =
+        get(
+            API + "/promotions/" + UUID.randomUUID() + "/graduates/export",
+            admin,
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+  }
+
+  @Test
+  void non_admin_cannot_export_graduates() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
+    var teacherUser = register("teacher-export-" + UUID.randomUUID());
+    promoteToTeacher(admin, teacherUser.getId());
+    var teacherToken = login(teacherUser.getUsername(), DEFAULT_PASSWORD);
+
+    var response =
+        get(
+            API + "/promotions/" + fixture.promotionId() + "/graduates/export",
+            teacherToken,
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+  }
+
+  @Test
+  void export_graduates_without_token_returns_unauthorized() {
+    var admin = bootstrapAdminToken();
+    var fixture = setUpGraduatedStudent(admin, PASSING_GRADE);
+
+    var response =
+        get(
+            API + "/promotions/" + fixture.promotionId() + "/graduates/export",
+            null,
+            ErrorResponse.class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+  }
 }
