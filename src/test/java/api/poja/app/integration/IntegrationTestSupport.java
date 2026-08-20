@@ -203,12 +203,6 @@ public abstract class IntegrationTestSupport extends FacadeIT {
     return promoteToStudent(adminToken, userId, promotion, group, academicYear, ProgramCode.EL);
   }
 
-  /**
-   * Promotes the user to student, then sets the program via PATCH
-   * /students/{id}/program. A freshly-promoted student has no program (it is
-   * null) until this second call, mirroring production behaviour. Pass {@code
-   * null} to leave the program unset.
-   */
   protected Student promoteToStudent(
       String adminToken,
       UUID userId,

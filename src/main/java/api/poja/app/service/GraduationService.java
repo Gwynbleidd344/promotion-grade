@@ -56,8 +56,7 @@ public class GraduationService {
   public GraduationStatus getGraduationStatus(UUID studentId) {
     var student = findStudentOrThrow(studentId);
     if (student.getProgram() == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Student has no program assigned");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student has no program assigned");
     }
     var allGrades = gradeRepository.findByStudentId(studentId);
 
