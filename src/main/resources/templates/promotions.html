@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Promotions — HEI Academic</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Promotions</h1>
+    <div class="user-info">
+      <span th:if="${username}" th:text="${username} + ' (' + ${role} + ')'"></span>
+      <form th:action="@{/logout}" method="post" style="display:inline">
+        <button type="submit" class="link-button">Se deconnecter</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="content">
+    <p class="error" th:if="${error}" th:text="${error}"></p>
+
+    <table class="promotions-table" th:if="${promotions != null and !promotions.isEmpty()}">
+      <thead>
+        <tr>
+          <th>Nom de la promotion</th>
+          <th>Annee de diplome</th>
+          <th>Liste des diplomes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="promotion : ${promotions}">
+          <td th:text="${promotion.name}"></td>
+          <td th:text="${promotion.graduationYear}"></td>
+          <td>
+            <a class="download-button"
+               th:href="@{/promotions/{id}/graduates/download(id=${promotion.id})}">
+              Telecharger (XLSX)
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p th:if="${promotions != null and promotions.isEmpty()}">
+      Aucune promotion enregistree pour le moment.
+    </p>
+  </main>
+</body>
+</html>
