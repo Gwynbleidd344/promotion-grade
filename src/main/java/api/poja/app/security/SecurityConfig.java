@@ -43,6 +43,14 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/ping", "/health/**")
                     .permitAll()
+                    .requestMatchers(
+                        "/login",
+                        "/api/v1/auth/login",
+                        "/css/**",
+                        "/js/**",
+                        "/images/**",
+                        "/favicon.ico")
+                    .permitAll()
                     .requestMatchers("/api/v1/users/**")
                     .hasRole("ADM")
                     .requestMatchers(HttpMethod.POST, "/api/v1/academic-years")
