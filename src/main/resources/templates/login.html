@@ -1,28 +1,123 @@
 <!DOCTYPE html>
-<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Connexion — HEI Academic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - Gestion des Promotions</title>
   <link rel="stylesheet" th:href="@{/css/style.css}">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-card {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-card h2 {
+      margin-bottom: 20px;
+      color: #333;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #666;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .btn-submit:hover {
+      background-color: #0056b3;
+    }
+    .error-message {
+      color: #dc3545;
+      margin-top: 10px;
+      display: none;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-  <div class="auth-container">
-    <div class="auth-card">
-      <h1>Connexion</h1>
-      <p class="subtitle">Espace administration — HEI Academic Management</p>
 
-      <p class="error" th:if="${error}" th:text="${error}"></p>
-
-      <form th:action="@{/login}" method="post">
-        <label for="username">Nom d'utilisateur</label>
-        <input type="text" id="username" name="username" required autofocus>
-
-        <label for="password">Mot de passe</label>
-        <input type="password" id="password" name="password" required>
-
-        <button type="submit">Se connecter</button>
-      </form>
+<div class="login-card">
+  <h2>Connexion</h2>
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="username">Nom d'utilisateur</label>
+      <input type="text" id="username" name="username" required placeholder="Ex: ilo06">
     </div>
-  </div>
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn-submit">Se connecter</button>
+    <div id="errorMessage" class="error-message">Identifiants invalides ou erreur serveur.</div>
+  </form>
+</div>
+
+<script>
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('errorMessage');
+
+    errorDiv.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Stocker le token JWT
+        localStorage.setItem('accessToken', data.accessToken);
+        document.cookie = `token=${data.accessToken}; path=/; max-age=${data.expiresIn || 86400}`;
+
+        // Redirection vers la page des promotions
+        window.location.href = '/promotions-view';
+      } else {
+        errorDiv.innerText = "Identifiants incorrects.";
+        errorDiv.style.display = 'block';
+      }
+    } catch (err) {
+      errorDiv.innerText = "Erreur de connexion au serveur.";
+      errorDiv.style.display = 'block';
+    }
+  });
+</script>
+
 </body>
 </html>
