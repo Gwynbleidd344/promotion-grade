@@ -22,8 +22,7 @@ public class BucketConf {
 
   @SneakyThrows
   public BucketConf(
-      @Value("eu-west-3") String regionString,
-      @Value("${aws.s3.bucket:default}") String bucketName) {
+      @Value("eu-west-3") String regionString, @Value("${aws.s3.bucket}") String bucketName) {
     this.bucketName = bucketName;
     var region = Region.of(regionString);
     this.s3TransferManager =

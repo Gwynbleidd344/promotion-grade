@@ -52,6 +52,12 @@ jobs:
               (github.ref == 'refs/heads/prod') && secrets.PROD_JWT_SECRET ||
               (github.ref == 'refs/heads/preprod') && secrets.PREPROD_JWT_SECRET
               }}
+      API_BASE_URL: ${{
+              (github.event_name == 'pull_request' && github.base_ref == 'prod') && secrets.PROD_API_BASE_URL ||
+              (github.event_name == 'pull_request' && github.base_ref == 'preprod') && secrets.PREPROD_API_BASE_URL ||
+              (github.ref == 'refs/heads/prod') && secrets.PROD_API_BASE_URL ||
+              (github.ref == 'refs/heads/preprod') && secrets.PREPROD_API_BASE_URL
+              }}
 
     steps:
       - uses: actions/checkout@v4.1.6
@@ -109,7 +115,7 @@ jobs:
           curl -X GET -o template.yml "$(echo $response | jq -r '.build_template_file_uri')"
 
       - name: Build project
-        run: sam build --debug
+        run: sam build
 
       - name: Prepare Poja deployment
         run: |

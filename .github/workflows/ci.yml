@@ -44,6 +44,12 @@ jobs:
               (github.ref == 'refs/heads/prod') && secrets.PROD_JWT_SECRET ||
               (github.ref == 'refs/heads/preprod') && secrets.PREPROD_JWT_SECRET
               }}
+      API_BASE_URL: ${{
+              (github.event_name == 'pull_request' && github.base_ref == 'prod') && secrets.PROD_API_BASE_URL ||
+              (github.event_name == 'pull_request' && github.base_ref == 'preprod') && secrets.PREPROD_API_BASE_URL ||
+              (github.ref == 'refs/heads/prod') && secrets.PROD_API_BASE_URL ||
+              (github.ref == 'refs/heads/preprod') && secrets.PREPROD_API_BASE_URL
+              }}
 
 
     steps:
@@ -55,17 +61,14 @@ jobs:
           distribution: 'corretto'
       - run: chmod +x gradlew
       - run: chmod +x .shell/publish_gen_to_maven_local.sh
-
-      - name: Run tests
-        run: |
+      - run: |
           ./gradlew test \
-            --info \
-            --stacktrace \
-            --console=plain \
             -Dspring.datasource.url="$SPRING_DATASOURCE_URL" \
             -Dspring.datasource.username="$SPRING_DATASOURCE_USERNAME" \
             -Dspring.datasource.password="$SPRING_DATASOURCE_PASSWORD" \
-            -Djwt.secret="$JWT_SECRET"
+            -Djwt.secret="$JWT_SECRET" \
+            -Dapi.base.url="$API_BASE_URL"
+
       
 
   format:
