@@ -6,6 +6,7 @@ import api.poja.app.mail.Email;
 import api.poja.app.mail.Mailer;
 import api.poja.app.repository.AcademicReportRepository;
 import jakarta.mail.internet.InternetAddress;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Consumer;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 @Slf4j
 public class TranscriptSendRequestedService implements Consumer<TranscriptSendRequested> {
+
+  private static final Duration EMAIL_LINK_TTL = Duration.ofDays(7);
 
   private final AcademicReportRepository academicReportRepository;
   private final BucketComponent bucketComponent;
@@ -44,7 +47,7 @@ public class TranscriptSendRequestedService implements Consumer<TranscriptSendRe
     var student = report.getStudent();
     var recipient = new InternetAddress(student.getUserAccount().getEmail());
     var yearLabel = report.getAcademicYear().getLabel();
-    var pdfFile = bucketComponent.download(report.getPdfS3Key());
+    var downloadUrl = bucketComponent.presign(report.getPdfS3Key(), EMAIL_LINK_TTL).toString();
 
     mailer.accept(
         new Email(
@@ -54,10 +57,13 @@ public class TranscriptSendRequestedService implements Consumer<TranscriptSendRe
             "Relevé de notes - " + yearLabel,
             "Bonjour "
                 + student.getFirstName()
-                + ",<br/><br/>Veuillez trouver ci-joint votre relevé de notes pour l'année "
+                + ",<br/><br/>Votre relevé de notes pour l'année "
                 + yearLabel
-                + ".",
-            List.of(pdfFile)));
+                + " est disponible via le lien suivant (valable 7 jours) : "
+                + "<a href=\""
+                + downloadUrl
+                + "\">Télécharger mon relevé de notes</a>.",
+            List.of()));
 
     report.setSentAt(LocalDateTime.now());
     academicReportRepository.save(report);

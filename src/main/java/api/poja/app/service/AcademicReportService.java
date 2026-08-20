@@ -189,14 +189,7 @@ public class AcademicReportService {
   @Transactional
   public void requestSend(UUID studentId, String yearLabel) {
     var student = findStudentOrThrow(studentId);
-    var academicYear = findAcademicYearOrThrow(yearLabel);
-    var existing =
-        academicReportRepository.findByStudentIdAndAcademicYearId(studentId, academicYear.getId());
-
-    UUID reportId =
-        (existing.isEmpty() || existing.get().getPdfS3Key() == null)
-            ? generate(studentId, yearLabel).getId()
-            : existing.get().getId();
+    var reportId = generate(studentId, yearLabel).getId();
 
     eventProducer.accept(
         List.of(
