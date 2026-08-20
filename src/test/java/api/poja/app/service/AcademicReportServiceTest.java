@@ -19,6 +19,7 @@ import api.poja.app.entity.Program;
 import api.poja.app.entity.ProgramCourse;
 import api.poja.app.entity.Promotion;
 import api.poja.app.entity.Student;
+import api.poja.app.entity.UserAccount;
 import api.poja.app.entity.enums.ProgramCode;
 import api.poja.app.entity.enums.ReportStatus;
 import api.poja.app.file.bucket.BucketComponent;
@@ -84,8 +85,13 @@ class AcademicReportServiceTest {
   }
 
   private Student student() {
+    var userAccount = new UserAccount();
+    userAccount.setId(UUID.randomUUID());
+    userAccount.setEmail("student@example.com");
+
     var s = new Student();
     s.setId(studentId);
+    s.setUserAccount(userAccount);
     s.setStudentNumber("STD001");
     s.setFirstName("Jean");
     s.setLastName("Rakoto");

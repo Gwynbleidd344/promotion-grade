@@ -17,10 +17,10 @@ import lombok.ToString;
 @ToString
 public class TranscriptSendRequested extends PojaEvent {
   private UUID academicReportId;
+  private String userEmail;
 
   @Override
   public Duration maxConsumerDuration() {
-    // PDF download from S3 + SES send, give it some room.
     return Duration.ofSeconds(60);
   }
 
