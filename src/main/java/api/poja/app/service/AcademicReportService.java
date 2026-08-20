@@ -188,7 +188,7 @@ public class AcademicReportService {
 
   @Transactional
   public void requestSend(UUID studentId, String yearLabel) {
-    findStudentOrThrow(studentId);
+    var student = findStudentOrThrow(studentId);
     var academicYear = findAcademicYearOrThrow(yearLabel);
     var existing =
         academicReportRepository.findByStudentIdAndAcademicYearId(studentId, academicYear.getId());
@@ -199,7 +199,11 @@ public class AcademicReportService {
             : existing.get().getId();
 
     eventProducer.accept(
-        List.of(TranscriptSendRequested.builder().academicReportId(reportId).build()));
+        List.of(
+            TranscriptSendRequested.builder()
+                .academicReportId(reportId)
+                .userEmail(student.getUserAccount().getEmail())
+                .build()));
   }
 
   private boolean isSameAcademicYear(
