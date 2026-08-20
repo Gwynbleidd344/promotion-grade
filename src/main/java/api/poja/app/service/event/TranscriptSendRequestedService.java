@@ -13,11 +13,8 @@ import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Consumes {@link TranscriptSendRequested} events in a Poja worker: downloads the previously
- * generated transcript PDF from S3 and emails it to the student, then marks it as sent.
- */
 @Service
 @AllArgsConstructor
 @Slf4j
@@ -29,6 +26,7 @@ public class TranscriptSendRequestedService implements Consumer<TranscriptSendRe
 
   @SneakyThrows
   @Override
+  @Transactional
   public void accept(TranscriptSendRequested event) {
     var report =
         academicReportRepository
